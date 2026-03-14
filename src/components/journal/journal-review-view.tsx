@@ -1,10 +1,18 @@
+import { AlertTriangle, ClipboardList, Sparkles, Target } from "lucide-react";
+
 import { DisciplineChart } from "@/components/charts/discipline-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricCard } from "@/components/ui/metric-card";
 import { SectionHeading } from "@/components/ui/section-heading";
 import type { ReviewSnapshot } from "@/types";
 
 export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
+  const openEntries = snapshot.entries.filter((entry) => entry.status === "OPEN");
+  const closedEntries = snapshot.entries.filter((entry) => entry.status === "CLOSED");
+  const setupTags = Array.from(new Set(snapshot.entries.map((entry) => entry.setupName)));
+  const mistakes = snapshot.entries.filter((entry) => entry.mistakeTag);
+
   return (
     <div className="space-y-6">
       <SectionHeading
@@ -14,11 +22,38 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
         action={<Badge variant="info">{snapshot.analytics.winRate}% win rate</Badge>}
       />
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={<Target className="h-4 w-4 text-primary" />}
+          label="Win rate"
+          value={`${snapshot.analytics.winRate}%`}
+          hint="Closed trade quality"
+        />
+        <MetricCard
+          icon={<Sparkles className="h-4 w-4 text-cyan-300" />}
+          label="Average R"
+          value={snapshot.analytics.averageR}
+          hint="Risk-adjusted outcome"
+        />
+        <MetricCard
+          icon={<ClipboardList className="h-4 w-4 text-amber-300" />}
+          label="Open trades"
+          value={openEntries.length}
+          hint="Needs active discipline"
+        />
+        <MetricCard
+          icon={<AlertTriangle className="h-4 w-4 text-rose-300" />}
+          label="Logged mistakes"
+          value={mistakes.length}
+          hint="Review and eliminate repeats"
+        />
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Setup analytics</CardTitle>
+              <CardTitle>Performance cards</CardTitle>
               <CardDescription>What the journal says about process quality.</CardDescription>
             </div>
           </CardHeader>
@@ -48,33 +83,93 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Trade journal</CardTitle>
-              <CardDescription>Closed and open trades with behavior notes.</CardDescription>
+              <CardTitle>Setup tags and discipline review</CardTitle>
+              <CardDescription>Recurring setups, behavior patterns, and process reminders.</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            {snapshot.entries.map((entry) => (
-              <div key={entry.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium">{entry.ticker}</p>
-                      <Badge variant={entry.status === "OPEN" ? "warning" : "success"}>{entry.status}</Badge>
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="text-sm font-medium">Setup tags</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {setupTags.map((tag) => (
+                  <Badge key={tag} variant="neutral">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
+              <p className="font-medium">Discipline review</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Best-performing setups came when entries waited for confirmation. The main process leak is still early entry before the trigger is active.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="font-medium">Mistake logging section</p>
+              <div className="mt-3 space-y-3">
+                {mistakes.length ? (
+                  mistakes.map((entry) => (
+                    <div key={entry.id} className="rounded-2xl border border-white/8 bg-[#08111c] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">{entry.ticker}</p>
+                        <Badge variant="warning">{entry.mistakeTag}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-muted-foreground">{entry.reviewNotes}</p>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{entry.setupName}</p>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No mistakes logged in the current dataset.</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Open trades</CardTitle>
+              <CardDescription>Live positions and watch items that require discipline.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {openEntries.map((entry) => (
+              <div key={entry.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{entry.ticker}</p>
+                    <p className="text-sm text-muted-foreground">{entry.setupName}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{entry.outcomeR ? `${entry.outcomeR}R` : "Open"}</p>
-                    <p className="text-sm text-muted-foreground">Discipline {entry.disciplineScore}/10</p>
-                  </div>
+                  <Badge variant="warning">OPEN</Badge>
                 </div>
                 <p className="mt-3 text-sm text-muted-foreground">{entry.thesis}</p>
                 <p className="mt-2 text-sm text-foreground">{entry.reviewNotes}</p>
-                {entry.mistakeTag ? (
-                  <div className="mt-3">
-                    <Badge variant="warning">{entry.mistakeTag}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Closed trades</CardTitle>
+              <CardDescription>Completed trades with review notes and outcomes.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {closedEntries.map((entry) => (
+              <div key={entry.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{entry.ticker}</p>
+                    <p className="text-sm text-muted-foreground">{entry.setupName}</p>
                   </div>
-                ) : null}
+                  <Badge variant="success">{entry.outcomeR}R</Badge>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{entry.thesis}</p>
+                <p className="mt-2 text-sm text-foreground">{entry.reviewNotes}</p>
               </div>
             ))}
           </CardContent>

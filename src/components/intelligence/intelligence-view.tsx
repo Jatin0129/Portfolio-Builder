@@ -1,7 +1,8 @@
-import { Globe2, Landmark, ScanSearch } from "lucide-react";
+import { CandlestickChart, Globe2, Landmark, ScanSearch } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { formatPercent } from "@/lib/utils";
@@ -24,6 +25,21 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
         action={<Badge variant="info">{snapshot.regime.name}</Badge>}
       />
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          hint={`${snapshot.regime.confidence}% confidence`}
+          label="Regime stance"
+          value={snapshot.regime.stance}
+        />
+        <MetricCard label="Macro events" value={snapshot.macroEvents.length} hint="Upcoming calendar items" />
+        <MetricCard
+          label="Geo watchpoints"
+          value={snapshot.geopoliticalEvents.length}
+          hint="Severity-scored overlays"
+        />
+        <MetricCard label="Tracked catalysts" value={snapshot.catalysts.length} hint="Potential repricing windows" />
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>
@@ -43,7 +59,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                       <Badge variant={severityVariant(event.severity)}>{event.severity}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {event.region} • {event.date} • {event.category}
+                      {event.region} | {event.date} | {event.category}
                     </p>
                   </div>
                   <p className="text-sm text-muted-foreground">Consensus: {event.consensus}</p>
@@ -57,22 +73,23 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Geopolitical overlay</CardTitle>
+              <CardTitle>Geopolitical board</CardTitle>
               <CardDescription>Severity-scored context for cross-asset positioning.</CardDescription>
             </div>
             <Globe2 className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-              <p className="text-sm text-muted-foreground">Regime explanation</p>
+              <p className="text-sm text-muted-foreground">Regime explanation panel</p>
               <p className="mt-2 text-sm leading-6 text-foreground">{snapshot.regime.explanation}</p>
             </div>
             {snapshot.geopoliticalEvents.map((event) => (
               <div key={event.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{event.title}</p>
-                  <Badge variant={severityVariant(event.severity)}>{event.status}</Badge>
+                  <Badge variant={severityVariant(event.severity)}>{event.severity}</Badge>
                 </div>
+                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{event.status}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{event.implication}</p>
               </div>
             ))}
@@ -84,11 +101,30 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Sector heatmap</CardTitle>
-              <CardDescription>Cycle fit and recent performance at a glance.</CardDescription>
+              <CardTitle>Sector and cross-asset market snapshot</CardTitle>
+              <CardDescription>Cycle fit, sector rotation, and cross-asset leadership at a glance.</CardDescription>
             </div>
+            <CandlestickChart className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Top sector</p>
+                <p className="mt-2 text-xl font-semibold">{snapshot.sectorHeatmap[0]?.sector}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {formatPercent(snapshot.sectorHeatmap[0]?.performance1M ?? 0)} over 1 month
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Weakest sector</p>
+                <p className="mt-2 text-xl font-semibold">
+                  {snapshot.sectorHeatmap[snapshot.sectorHeatmap.length - 1]?.sector}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {formatPercent(snapshot.sectorHeatmap[snapshot.sectorHeatmap.length - 1]?.performance1M ?? 0)} over 1 month
+                </p>
+              </div>
+            </div>
             {snapshot.sectorHeatmap.map((sector) => (
               <div key={sector.sector} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -121,11 +157,12 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
               <ScanSearch className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              {snapshot.rankedAssets.map((asset) => (
+              {snapshot.rankedAssets.map((asset, index) => (
                 <div key={asset.ticker} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <div className="flex items-center gap-3">
+                        <p className="text-xs font-medium text-primary">#{index + 1}</p>
                         <p className="font-medium">{asset.ticker}</p>
                         <Badge variant={asset.riskVerdict.decision === "REJECT" ? "danger" : "success"}>
                           {asset.riskVerdict.decision}
@@ -160,7 +197,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Catalysts</CardTitle>
+                <CardTitle>Catalyst tracker</CardTitle>
                 <CardDescription>Near-term events capable of repricing the ranking table.</CardDescription>
               </div>
             </CardHeader>

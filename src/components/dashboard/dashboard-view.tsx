@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ArrowRight, ShieldAlert, ShieldCheck, Siren, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BellRing,
+  BriefcaseBusiness,
+  ShieldAlert,
+  ShieldCheck,
+  Siren,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 
 import { FactorRadarChart } from "@/components/charts/factor-radar-chart";
 import { MarketPulseChart } from "@/components/charts/market-pulse-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { formatCurrency } from "@/lib/utils";
@@ -37,6 +48,33 @@ export function DashboardView({
         description="Translate macro regime, factor leadership, technical confirmation, and portfolio constraints into explainable swing-trade ideas."
         action={<Badge variant="info">{snapshot.currentRegime.name}</Badge>}
       />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          hint={`${snapshot.currentRegime.stance} regime`}
+          icon={<TrendingUp className="h-4 w-4 text-primary" />}
+          label="Regime confidence"
+          value={`${snapshot.currentRegime.confidence}%`}
+        />
+        <MetricCard
+          hint={`${snapshot.marketSummary.breadthPct}% breadth`}
+          icon={<BriefcaseBusiness className="h-4 w-4 text-cyan-300" />}
+          label="Portfolio value"
+          value={formatCurrency(portfolio.portfolioValueAed)}
+        />
+        <MetricCard
+          hint={`${portfolio.openRiskPct}% of portfolio`}
+          icon={<Target className="h-4 w-4 text-amber-300" />}
+          label="Open risk"
+          value={formatCurrency(portfolio.openRiskAed)}
+        />
+        <MetricCard
+          hint="Requires review before new risk"
+          icon={<BellRing className="h-4 w-4 text-rose-300" />}
+          label="Active alerts"
+          value={snapshot.alerts.length}
+        />
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
         <Card className="overflow-hidden">
@@ -80,7 +118,7 @@ export function DashboardView({
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Portfolio summary</CardTitle>
+              <CardTitle>Portfolio snapshot</CardTitle>
               <CardDescription>AED reporting with open-risk awareness.</CardDescription>
             </div>
             <Badge variant="neutral">{portfolio.topExposure}</Badge>
@@ -103,6 +141,20 @@ export function DashboardView({
               <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
                 <p className="text-sm text-muted-foreground">Daily PnL</p>
                 <p className="mt-2 text-2xl font-semibold">{formatCurrency(portfolio.dailyPnlAed)}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/8 bg-white/4 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">Allocation mix</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Snapshot</p>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {portfolio.allocationMix.map((item) => (
+                  <div key={item.name} className="rounded-2xl border border-white/8 bg-[#08111c] p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.name}</p>
+                    <p className="mt-2 text-xl font-semibold">{item.value}%</p>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
