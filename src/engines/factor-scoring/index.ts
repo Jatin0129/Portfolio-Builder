@@ -4,14 +4,14 @@ import { clamp } from "@/lib/utils";
 
 const factorLabels: Record<FactorKey, string> = {
   momentum: "Momentum",
-  trendStructure: "Trend Structure",
+  trendStructure: "Trend",
   relativeStrength: "Relative Strength",
   volatilityQuality: "Volatility Quality",
   valuationSanity: "Valuation Sanity",
   macroFit: "Macro Fit",
   geopoliticalFit: "Geopolitical Fit",
   liquidity: "Liquidity",
-  catalystStrength: "Catalyst Strength",
+  catalystStrength: "Catalyst",
 };
 
 function rationaleForFactor(key: FactorKey, score: number) {

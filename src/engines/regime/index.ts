@@ -1,102 +1,204 @@
 import type {
-  GeopoliticalEvent,
-  MacroEvent,
-  MarketSummary,
+  BreadthState,
+  RegimeInput,
+  RegimePosture,
+  RegimeSignalBreakdown,
   RegimeSnapshot,
   Severity,
 } from "@/types";
 
-function severityValue(severity: Severity) {
-  switch (severity) {
-    case "Critical":
-      return 4;
-    case "High":
-      return 3;
-    case "Moderate":
-      return 2;
+const signalWeights = {
+  majorIndexTrend: { bullish: 3, mixed: 0, bearish: -3 },
+  bondYieldDirection: { down: 2, flat: 1, up: -2 },
+  goldBehavior: { "breaking-out": -1, stable: 0, weakening: 1 },
+  oilBehavior: { rising: -2, stable: 0, falling: 1 },
+  usdTrend: { down: 2, flat: 0, up: -2 },
+  volatilityState: { calm: 3, elevated: -1, stressed: -4 },
+  marketBreadth: { strong: 3, mixed: 0, weak: -3 },
+} as const;
+
+const macroPenaltyWeights = {
+  inflationRisk: -1,
+  centralBankRisk: -1,
+  growthRisk: -2,
+  liquidityRisk: -1,
+} as const;
+
+const geopoliticalPenalty: Record<Severity, number> = {
+  Low: 0,
+  Moderate: -1,
+  High: -2,
+  Critical: -4,
+};
+
+function buildSignal(
+  signal: string,
+  state: string,
+  score: number,
+  positiveCopy: string,
+  negativeCopy: string,
+): RegimeSignalBreakdown {
+  return {
+    signal,
+    state,
+    score,
+    impact: score > 0 ? "tailwind" : score < 0 ? "headwind" : "neutral",
+    explanation: score >= 0 ? positiveCopy : negativeCopy,
+  };
+}
+
+function postureFromScore(score: number): RegimePosture {
+  if (score >= 6) return "aggressive";
+  if (score >= 1) return "balanced";
+  if (score >= -4) return "defensive";
+  return "high cash";
+}
+
+function stanceFromPosture(posture: RegimePosture): RegimeSnapshot["stance"] {
+  if (posture === "aggressive") return "Risk-On";
+  if (posture === "balanced") return "Balanced";
+  return "Defensive";
+}
+
+function labelFromPosture(posture: RegimePosture) {
+  switch (posture) {
+    case "aggressive":
+      return "Constructive Expansion";
+    case "balanced":
+      return "Selective Risk-On";
+    case "defensive":
+      return "Defensive Rotation";
     default:
-      return 1;
+      return "Capital Preservation";
   }
 }
 
-export function classifyRegime(
-  market: MarketSummary,
-  macroEvents: MacroEvent[],
-  geopoliticalEvents: GeopoliticalEvent[],
-): RegimeSnapshot {
-  const indexSignal =
-    market.indices.filter((item) => item.trend === "up").length -
-    market.indices.filter((item) => item.trend === "down").length;
-  const breadthSignal = market.breadthPct >= 58 ? 1 : market.breadthPct >= 48 ? 0 : -1;
-  const volatilitySignal = market.vix <= 17 ? 1 : market.vix <= 22 ? 0 : -1;
-  const usdSignal = market.usdTrend === "down" ? 1 : market.usdTrend === "up" ? -1 : 0;
-  const bondSignal =
-    market.bondYieldTrend === "flat" ? 1 : market.bondYieldTrend === "up" ? -1 : 0;
-  const commoditySignal = market.goldOilSignal === "balanced" ? 1 : 0;
-  const macroStress =
-    macroEvents.filter((event) => severityValue(event.severity) >= 3).length >= 2 ? -1 : 0;
-  const geoStress =
-    geopoliticalEvents.reduce((sum, event) => sum + severityValue(event.severity), 0) >= 8
-      ? -1
-      : 0;
+function breadthStateFromScore(breadth: BreadthState) {
+  return breadth === "strong" ? "healthy participation" : breadth === "mixed" ? "mixed participation" : "weak participation";
+}
 
-  const total =
-    indexSignal +
-    breadthSignal +
-    volatilitySignal +
-    usdSignal +
-    bondSignal +
-    commoditySignal +
-    macroStress +
-    geoStress;
+function buildExplanation(posture: RegimePosture, drivers: string[], alerts: string[]) {
+  const tone =
+    posture === "aggressive"
+      ? "Risk appetite is broadly supported across trend, liquidity, and internal participation."
+      : posture === "balanced"
+        ? "The backdrop still supports selective risk-taking, but event and cross-asset conflict argue against full aggression."
+        : posture === "defensive"
+          ? "Several inputs are deteriorating, so capital should be deployed selectively with tighter controls."
+          : "Too many risk signals are stacked against new exposure, so preserving cash and optionality is the priority.";
 
-  if (total >= 3) {
-    return {
-      name: "Constructive Risk-On",
-      stance: "Risk-On",
-      confidence: 78,
-      explanation:
-        "Trend, breadth, and volatility are supportive, but upcoming macro events and geopolitical overlays argue for selective rather than aggressive risk-taking.",
-      drivers: [
-        "US equity trends remain positive with improving breadth.",
-        "USD softness supports global risk assets and duration-sensitive leaders.",
-        "Volatility is contained enough for swing setups to work.",
-      ],
-      alerts: [
-        "Event risk is dense over the next week, so confirmation after major data prints matters.",
-        "Keep semicap and AI concentration in check despite strong opportunity scores.",
-      ],
-    };
+  return `${tone} ${drivers[0] ?? ""} ${alerts[0] ?? ""}`.trim();
+}
+
+function buildDriversAndAlerts(signals: RegimeSignalBreakdown[], posture: RegimePosture) {
+  const positive = signals.filter((signal) => signal.score > 0).sort((a, b) => b.score - a.score);
+  const negative = signals.filter((signal) => signal.score < 0).sort((a, b) => a.score - b.score);
+
+  const drivers = positive.slice(0, 3).map((signal) => signal.explanation);
+  const alerts = negative.slice(0, 3).map((signal) => signal.explanation);
+
+  if (posture === "aggressive" && alerts.length === 0) {
+    alerts.push("Macro and geopolitical penalties are contained enough to allow standard risk deployment.");
   }
 
-  if (total >= 0) {
-    return {
-      name: "Balanced Transition",
-      stance: "Balanced",
-      confidence: 64,
-      explanation:
-        "Market internals are mixed and leadership is narrower, so capital preservation and high-selectivity matter more than broad risk appetite.",
-      drivers: [
-        "Some trend resilience remains, but breadth is not fully supportive.",
-        "Macro and geopolitical inputs are offsetting one another.",
-      ],
-      alerts: [
-        "Use smaller sizing and wait for technical confirmation.",
-        "Favor hedges and lower-beta expressions until signals improve.",
-      ],
-    };
+  if (posture === "high cash" && drivers.length === 0) {
+    drivers.push("Only isolated pockets of strength remain and they are not broad enough to justify aggressive exposure.");
   }
+
+  return { drivers, alerts };
+}
+
+export function classifyRegime(input: RegimeInput): RegimeSnapshot {
+  const baseSignals: RegimeSignalBreakdown[] = [
+    buildSignal(
+      "Major index trend",
+      input.majorIndexTrend,
+      signalWeights.majorIndexTrend[input.majorIndexTrend],
+      "Major indices remain in a supportive trend structure.",
+      "Major index trend is deteriorating and reduces directional conviction.",
+    ),
+    buildSignal(
+      "Bond yields",
+      input.bondYieldDirection,
+      signalWeights.bondYieldDirection[input.bondYieldDirection],
+      "Bond yields are not pressuring the current leadership complex.",
+      "Higher yields are working against equity and duration-sensitive setups.",
+    ),
+    buildSignal(
+      "Gold behavior",
+      input.goldBehavior,
+      signalWeights.goldBehavior[input.goldBehavior],
+      "Gold is not demanding an immediate defensive pivot.",
+      "Gold strength is signaling a defensive undercurrent beneath the surface.",
+    ),
+    buildSignal(
+      "Oil behavior",
+      input.oilBehavior,
+      signalWeights.oilBehavior[input.oilBehavior],
+      "Oil is not adding inflation pressure to the regime.",
+      "Oil behavior is adding inflation and policy pressure.",
+    ),
+    buildSignal(
+      "USD trend",
+      input.usdTrend,
+      signalWeights.usdTrend[input.usdTrend],
+      "USD weakness supports global liquidity and risk appetite.",
+      "USD strength is tightening the backdrop for global risk assets.",
+    ),
+    buildSignal(
+      "Volatility",
+      input.volatilityState,
+      signalWeights.volatilityState[input.volatilityState],
+      "Volatility is contained enough for swing setups to behave constructively.",
+      "Volatility is elevated enough to warrant tighter risk and lower conviction.",
+    ),
+    buildSignal(
+      "Market breadth",
+      input.marketBreadth,
+      signalWeights.marketBreadth[input.marketBreadth],
+      `Market breadth shows ${breadthStateFromScore(input.marketBreadth)}.`,
+      `Market breadth shows ${breadthStateFromScore(input.marketBreadth)} and weakens participation quality.`,
+    ),
+  ];
+
+  const macroPenalty = Object.entries(input.macroEventFlags).reduce((sum, [flag, active]) => {
+    if (!active) return sum;
+    return sum + macroPenaltyWeights[flag as keyof typeof macroPenaltyWeights];
+  }, 0);
+
+  const macroSignal = buildSignal(
+    "Macro event flags",
+    `${Object.values(input.macroEventFlags).filter(Boolean).length} active`,
+    macroPenalty,
+    "Macro event risk is manageable and not a major regime drag.",
+    "Macro event clustering is increasing the probability of sharp cross-asset repricing.",
+  );
+
+  const geoSignal = buildSignal(
+    "Geopolitical severity",
+    input.geopoliticalSeverity,
+    geopoliticalPenalty[input.geopoliticalSeverity],
+    "Geopolitical stress is not dominant enough to override price action.",
+    "Geopolitical stress is elevated enough to cap aggression and require hedging discipline.",
+  );
+
+  const signals = [...baseSignals, macroSignal, geoSignal];
+  const totalScore = signals.reduce((sum, signal) => sum + signal.score, 0);
+  const conflicts = signals.filter((signal) => signal.score === 0).length;
+  const posture = postureFromScore(totalScore);
+  const { drivers, alerts } = buildDriversAndAlerts(signals, posture);
+  const confidence = Math.max(38, Math.min(92, 56 + Math.abs(totalScore) * 4 - conflicts * 2));
+  const label = labelFromPosture(posture);
 
   return {
-    name: "Defensive Stress",
-    stance: "Defensive",
-    confidence: 72,
-    explanation:
-      "Weak breadth, higher volatility, and worsening macro or geopolitical pressure require a capital-preservation regime until price action improves.",
-    drivers: [
-      "Risk appetite is deteriorating across index trend and volatility measures.",
-      "Macro and policy stress are dominating factor leadership.",
-    ],
-    alerts: ["Avoid forcing new longs.", "Rotate to hedges, cash, and lower-correlation exposures."],
+    label,
+    name: label,
+    stance: stanceFromPosture(posture),
+    posture,
+    confidence,
+    explanation: buildExplanation(posture, drivers, alerts),
+    drivers,
+    alerts,
+    signals,
   };
 }

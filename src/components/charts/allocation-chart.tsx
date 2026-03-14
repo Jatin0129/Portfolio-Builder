@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-const colors = ["#66e0d5", "#f7c873", "#64748b"];
+const colors = ["#66e0d5", "#f7c873", "#64748b", "#f97316"];
 
 export function AllocationChart({
   data,

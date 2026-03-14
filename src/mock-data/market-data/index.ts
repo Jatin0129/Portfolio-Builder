@@ -1,4 +1,4 @@
-import type { AssetSignalInput, MarketSummary } from "@/types";
+import type { AssetSignalSeed, MarketSummary } from "@/types";
 
 export const marketSummary: MarketSummary = {
   indices: [
@@ -7,14 +7,24 @@ export const marketSummary: MarketSummary = {
     { name: "MSCI EM", ticker: "EEM", level: 43.8, changePct: -0.3, trend: "flat" },
     { name: "Gold", ticker: "XAU", level: 2184, changePct: 0.4, trend: "up" },
   ],
+  majorIndexTrend: "bullish",
   usdTrend: "down",
-  bondYieldTrend: "flat",
-  goldOilSignal: "balanced",
+  bondYieldDirection: "flat",
+  goldBehavior: "stable",
+  oilBehavior: "stable",
+  volatilityState: "calm",
   vix: 15.8,
   breadthPct: 62,
+  macroEventFlags: {
+    inflationRisk: true,
+    centralBankRisk: true,
+    growthRisk: false,
+    liquidityRisk: false,
+  },
+  geopoliticalSeverity: "High",
 };
 
-export const assetUniverse: AssetSignalInput[] = [
+export const assetUniverse: AssetSignalSeed[] = [
   {
     ticker: "NVDA",
     name: "NVIDIA",
@@ -24,13 +34,13 @@ export const assetUniverse: AssetSignalInput[] = [
     currency: "USD",
     price: 962,
     changePct: 1.8,
+    themes: ["AI Infrastructure", "Semiconductor Leadership", "US Growth"],
+    allocationBucket: "tactical",
     momentum: 96,
     trendStructure: 92,
     relativeStrength: 95,
     volatilityQuality: 72,
     valuationSanity: 58,
-    macroFit: 84,
-    geopoliticalFit: 63,
     liquidity: 98,
     catalystStrength: 91,
     averageVolumeLabel: "Very High",
@@ -42,6 +52,15 @@ export const assetUniverse: AssetSignalInput[] = [
       support: 914,
       resistance: 970,
     },
+    technicalInsight: {
+      setupExplanation:
+        "The chart is compressing near highs after a strong impulse leg, which keeps continuation odds elevated if price expands on volume.",
+      confirmationSignals: [
+        "Daily close above 970",
+        "Semiconductor breadth stays positive",
+        "VIX remains below 18",
+      ],
+    },
     executionPlan: {
       entryZone: "958-972",
       addZone: "985-1002 on follow-through",
@@ -49,19 +68,20 @@ export const assetUniverse: AssetSignalInput[] = [
       targetOne: "1025",
       targetTwo: "1088",
       timeframe: "2-6 weeks",
+      steps: [
+        "Wait for a closing breakout through 970.",
+        "Start with half size on confirmation and add only if follow-through holds.",
+        "Trim partials into target one and trail the balance under higher lows.",
+      ],
     },
-    macroReasons: [
-      "Falling USD and stable yields extend support for long-duration growth leadership.",
-      "AI capex remains a late-cycle growth pocket despite softer aggregate manufacturing data.",
-    ],
-    geopoliticalReasons: [
-      "Export restriction risk remains present but is currently contained within a known headline band.",
-      "Supply-chain localization trend continues to benefit high-end compute incumbents.",
-    ],
     catalyst: "Cloud capex survey and enterprise AI demand updates",
     direction: "LONG",
     stopDistancePct: 5.1,
     conviction: 89,
+    shortThesis:
+      "NVIDIA remains the highest-conviction leadership name as AI capex momentum, relative strength, and technical compression align.",
+    regimeFitText:
+      "This setup fits a constructive but selective risk-on regime where leadership and liquidity still matter most.",
   },
   {
     ticker: "XLI",
@@ -72,13 +92,13 @@ export const assetUniverse: AssetSignalInput[] = [
     currency: "USD",
     price: 129,
     changePct: 0.9,
+    themes: ["Global Cyclicals", "Infrastructure", "Localization"],
+    allocationBucket: "core",
     momentum: 81,
     trendStructure: 84,
     relativeStrength: 77,
     volatilityQuality: 83,
     valuationSanity: 71,
-    macroFit: 88,
-    geopoliticalFit: 68,
     liquidity: 93,
     catalystStrength: 74,
     averageVolumeLabel: "High",
@@ -90,6 +110,15 @@ export const assetUniverse: AssetSignalInput[] = [
       support: 124.6,
       resistance: 130.2,
     },
+    technicalInsight: {
+      setupExplanation:
+        "XLI is building a broad continuation base, which is often where cyclical breadth trades emerge once macro uncertainty clears.",
+      confirmationSignals: [
+        "Clean break above 130.2",
+        "PMI and industrial breadth remain firm",
+        "Transport and capital goods groups confirm the move",
+      ],
+    },
     executionPlan: {
       entryZone: "128.5-130.5",
       addZone: "132.0-133.8",
@@ -97,19 +126,20 @@ export const assetUniverse: AssetSignalInput[] = [
       targetOne: "136.8",
       targetTwo: "140.5",
       timeframe: "3-8 weeks",
+      steps: [
+        "Allow macro event risk to pass before entry.",
+        "Add only if breakout breadth broadens beyond a single subsector.",
+        "Reduce if price fails back into the prior base.",
+      ],
     },
-    macroReasons: [
-      "Broadening cyclical participation is improving as financial conditions remain supportive.",
-      "China stabilization and infrastructure demand create a better earnings backdrop for industrials.",
-    ],
-    geopoliticalReasons: [
-      "Shipping disruptions create pockets of pricing power for selected logistics and industrial names.",
-      "Defense and localization spending remain medium-term tailwinds.",
-    ],
     catalyst: "Infrastructure procurement and PMI re-acceleration",
     direction: "LONG",
     stopDistancePct: 4,
     conviction: 81,
+    shortThesis:
+      "XLI is a cleaner breadth expansion expression than adding more mega-cap tech, with macro and valuation support both improving.",
+    regimeFitText:
+      "The regime supports selective cyclical participation, which makes industrials a strong complementary expression.",
   },
   {
     ticker: "GLD",
@@ -120,13 +150,13 @@ export const assetUniverse: AssetSignalInput[] = [
     currency: "USD",
     price: 207,
     changePct: 0.4,
+    themes: ["Defensive Hedge", "Gold", "Policy Uncertainty"],
+    allocationBucket: "hedge",
     momentum: 69,
     trendStructure: 76,
     relativeStrength: 71,
     volatilityQuality: 89,
     valuationSanity: 66,
-    macroFit: 79,
-    geopoliticalFit: 92,
     liquidity: 91,
     catalystStrength: 82,
     averageVolumeLabel: "High",
@@ -138,6 +168,15 @@ export const assetUniverse: AssetSignalInput[] = [
       support: 201.8,
       resistance: 209.4,
     },
+    technicalInsight: {
+      setupExplanation:
+        "Gold is coiling above a reclaimed range, which often produces clean continuation if real yields soften after a macro event.",
+      confirmationSignals: [
+        "Price holds above 205 into the Fed",
+        "Real yields stop rising",
+        "USD trend does not reverse sharply higher",
+      ],
+    },
     executionPlan: {
       entryZone: "206-208",
       addZone: "209.5-211.0",
@@ -145,19 +184,20 @@ export const assetUniverse: AssetSignalInput[] = [
       targetOne: "214.8",
       targetTwo: "219.5",
       timeframe: "2-5 weeks",
+      steps: [
+        "Use GLD as a balancing trade rather than a full beta expression.",
+        "Add only if the Fed reaction keeps the squeeze intact.",
+        "Scale out into target one while preserving a hedge core if geopolitical stress rises.",
+      ],
     },
-    macroReasons: [
-      "Real-rate sensitivity still favors gold if inflation cools without a growth scare.",
-      "It adds balance if the current regime slips from risk-on toward defensive rotation.",
-    ],
-    geopoliticalReasons: [
-      "Middle East shipping tension and election-cycle uncertainty support safe-haven demand.",
-      "Central-bank reserve diversification remains a supportive background flow.",
-    ],
     catalyst: "Fed dot plot and real yield reaction",
     direction: "LONG",
     stopDistancePct: 2.9,
     conviction: 76,
+    shortThesis:
+      "GLD offers a cleaner hedge expression than cutting all risk outright when macro event density and geopolitical stress remain elevated.",
+    regimeFitText:
+      "This trade fits a balanced regime that still needs downside shock absorbers despite constructive index trends.",
   },
   {
     ticker: "SMCI",
@@ -168,13 +208,13 @@ export const assetUniverse: AssetSignalInput[] = [
     currency: "USD",
     price: 901,
     changePct: 3.4,
+    themes: ["AI Infrastructure", "High Beta", "US Growth"],
+    allocationBucket: "tactical",
     momentum: 91,
     trendStructure: 74,
     relativeStrength: 88,
     volatilityQuality: 39,
     valuationSanity: 48,
-    macroFit: 80,
-    geopoliticalFit: 61,
     liquidity: 84,
     catalystStrength: 86,
     averageVolumeLabel: "High",
@@ -186,6 +226,15 @@ export const assetUniverse: AssetSignalInput[] = [
       support: 848,
       resistance: 920,
     },
+    technicalInsight: {
+      setupExplanation:
+        "The trend remains powerful, but volatility quality is weak enough that only tactical, highly confirmed entries make sense.",
+      confirmationSignals: [
+        "Pullback stabilizes above 860",
+        "Reclaim of 920 with volume",
+        "Semiconductor complex remains in gear",
+      ],
+    },
     executionPlan: {
       entryZone: "886-920",
       addZone: "940-955",
@@ -193,19 +242,20 @@ export const assetUniverse: AssetSignalInput[] = [
       targetOne: "998",
       targetTwo: "1065",
       timeframe: "1-4 weeks",
+      steps: [
+        "Use reduced size due to volatility quality concerns.",
+        "Only participate after reclaim confirmation, not during random intraday spikes.",
+        "Exit quickly if the reclaim fails because adverse excursion can widen fast.",
+      ],
     },
-    macroReasons: [
-      "AI infrastructure remains a favored earnings island in a supportive liquidity backdrop.",
-      "Leadership persistence works while breadth is improving rather than narrowing.",
-    ],
-    geopoliticalReasons: [
-      "Component concentration keeps headline sensitivity elevated.",
-      "Policy risk is manageable but too large for full-size positioning.",
-    ],
     catalyst: "Server backlog conversion and margin commentary",
     direction: "LONG",
     stopDistancePct: 6,
     conviction: 72,
+    shortThesis:
+      "SMCI still screens well on momentum and catalysts, but it requires tactical execution because volatility quality is poor.",
+    regimeFitText:
+      "It fits only the more aggressive edge of the current regime and should be sized smaller than cleaner leaders.",
   },
   {
     ticker: "TSLA",
@@ -216,13 +266,13 @@ export const assetUniverse: AssetSignalInput[] = [
     currency: "USD",
     price: 188,
     changePct: -1.2,
+    themes: ["EV Transition", "Rate Sensitive Growth", "China Exposure"],
+    allocationBucket: "tactical",
     momentum: 42,
     trendStructure: 38,
     relativeStrength: 34,
     volatilityQuality: 41,
     valuationSanity: 45,
-    macroFit: 56,
-    geopoliticalFit: 49,
     liquidity: 97,
     catalystStrength: 57,
     averageVolumeLabel: "Very High",
@@ -234,6 +284,15 @@ export const assetUniverse: AssetSignalInput[] = [
       support: 182,
       resistance: 198,
     },
+    technicalInsight: {
+      setupExplanation:
+        "Price is still below broken support, so the current structure is not yet a valid long swing setup.",
+      confirmationSignals: [
+        "Reclaim of 198",
+        "Relative strength versus SPX improves",
+        "Delivery or pricing catalysts materially improve sentiment",
+      ],
+    },
     executionPlan: {
       entryZone: "No trade until structure improves",
       addZone: "N/A",
@@ -241,18 +300,19 @@ export const assetUniverse: AssetSignalInput[] = [
       targetOne: "205",
       targetTwo: "218",
       timeframe: "Wait",
+      steps: [
+        "Do not anticipate the reversal before confirmation appears.",
+        "Reassess only if relative strength and structure improve together.",
+        "Skip entirely if broader growth leadership weakens into macro events.",
+      ],
     },
-    macroReasons: [
-      "Rate-sensitive growth can recover later, but leadership is not yet aligned with current breadth expansion.",
-      "Demand elasticity remains under pressure as global pricing normalizes.",
-    ],
-    geopoliticalReasons: [
-      "EV tariff and supply-chain policy uncertainty still clouds the next catalyst window.",
-      "China exposure adds headline volatility.",
-    ],
     catalyst: "Delivery data and pricing commentary",
     direction: "LONG",
     stopDistancePct: 4.8,
     conviction: 44,
+    shortThesis:
+      "Tesla remains on the scanner because liquidity is deep, but the current signal stack is too weak for fresh risk today.",
+    regimeFitText:
+      "This does not fit the current regime well enough and should stay in observation mode until structure and relative strength recover.",
   },
 ];

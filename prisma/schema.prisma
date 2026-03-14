@@ -26,6 +26,8 @@ model Asset {
   region            String
   sector            String
   currency          String
+  themes            Json
+  allocationBucket  String
   price             Float
   changePct         Float
   volumeScore       Int
@@ -39,7 +41,15 @@ model Asset {
   liquidityScore    Int
   catalystScore     Int
   opportunityScore  Int
-  technicalSetup    String
+  technicalSetup    Json
+  technicalInsight  Json
+  executionPlan     Json
+  catalyst          String
+  direction         TradeDirection
+  stopDistancePct   Float
+  conviction        Int
+  shortThesis       String
+  regimeFitText     String
   macroReasons      Json
   geopoliticalNotes Json
   createdAt         DateTime    @default(now())
@@ -47,45 +57,78 @@ model Asset {
 }
 
 model Holding {
-  id              String   @id @default(cuid())
-  ticker          String   @unique
-  name            String
-  sector          String
-  region          String
-  quantity        Float
-  avgCost         Float
-  marketPrice     Float
-  marketValueAed  Float
+  id               String   @id @default(cuid())
+  ticker           String   @unique
+  name             String
+  assetClass       String
+  sector           String
+  region           String
+  currency         String
+  themes           Json
+  allocationBucket String
+  quantity         Float
+  avgCost          Float
+  marketPrice      Float
+  marketValueAed   Float
   unrealizedPnlAed Float
-  weightPct       Float
-  beta            Float
-  correlationTag  String
-  stopDistancePct Float
-  openRiskAed     Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  weightPct        Float
+  beta             Float
+  correlationTag   String
+  stopDistancePct  Float
+  openRiskAed      Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model WatchlistItem {
+  id                   String   @id @default(cuid())
+  ticker               String   @unique
+  name                 String
+  assetClass           String
+  sector               String
+  region               String
+  currency             String
+  themes               Json
+  priority             String
+  targetEntry          String
+  thesis               String
+  candidateAllocationPct Float
+  candidateBucket      String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model MacroEvent {
-  id          String   @id @default(cuid())
-  title       String
-  region      String
-  eventDate   DateTime
-  severity    String
-  category    String
-  consensus   String
-  implication String
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  title         String
+  region        String
+  eventDate     DateTime
+  severity      String
+  severityScore Int
+  category      String
+  consensus     String
+  implication   String
+  watchFor      String
+  explanation   String
+  createdAt     DateTime @default(now())
 }
 
 model GeopoliticalEvent {
-  id          String   @id @default(cuid())
-  title       String
-  region      String
-  severity    String
-  status      String
-  implication String
-  createdAt   DateTime @default(now())
+  id                  String   @id @default(cuid())
+  title               String
+  category            String
+  region              String
+  severity            String
+  severityScore       Int
+  status              String
+  affectedRegions     Json
+  transmissionChannels Json
+  beneficiaries       Json
+  losers              Json
+  actionSuggestion    String
+  chips               Json
+  implication         String
+  createdAt           DateTime @default(now())
 }
 
 model JournalEntry {

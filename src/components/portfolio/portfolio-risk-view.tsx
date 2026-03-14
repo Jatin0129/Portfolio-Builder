@@ -7,45 +7,31 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { formatCurrency } from "@/lib/utils";
-import type { Holding, PortfolioRiskSnapshot, PortfolioSummary, RiskSettings } from "@/types";
+import type { PortfolioSnapshot } from "@/types";
 
-export function PortfolioRiskView({
-  summary,
-  holdings,
-  risk,
-  settings,
-}: {
-  summary: PortfolioSummary;
-  holdings: Holding[];
-  risk: PortfolioRiskSnapshot;
-  settings: RiskSettings;
-}) {
-  const sectorExposure = holdings.reduce<Record<string, number>>((accumulator, holding) => {
-    accumulator[holding.sector] = (accumulator[holding.sector] ?? 0) + holding.weightPct;
-    return accumulator;
-  }, {});
+function actionVariant(action: string) {
+  if (action === "Trim") return "warning" as const;
+  if (action === "Increase") return "success" as const;
+  return "neutral" as const;
+}
 
-  const themeExposure = holdings.reduce<Record<string, number>>((accumulator, holding) => {
-    accumulator[holding.correlationTag] = (accumulator[holding.correlationTag] ?? 0) + holding.weightPct;
-    return accumulator;
-  }, {});
+function statusVariant(status: string) {
+  if (status === "Breach" || status === "overweight") return "danger" as const;
+  if (status === "Watch" || status === "underweight") return "warning" as const;
+  if (status === "neutral") return "neutral" as const;
+  return "success" as const;
+}
 
-  const assetClassExposure = {
-    Equities: holdings
-      .filter((holding) => holding.sector !== "Precious Metals")
-      .reduce((sum, holding) => sum + holding.weightPct, 0),
-    Hedges: holdings
-      .filter((holding) => holding.sector === "Precious Metals")
-      .reduce((sum, holding) => sum + holding.weightPct, 0),
-    Cash: Number(((summary.cashAed / summary.portfolioValueAed) * 100).toFixed(1)),
-  };
+export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const { exposures, holdings, overUnderweights, risk, settings, suggestedAllocation, summary, watchlist } =
+    snapshot;
 
   return (
     <div className="space-y-6">
       <SectionHeading
         eyebrow="Portfolio & Risk"
         title="Allocation discipline in AED"
-        description="Holdings, concentration, correlation awareness, and open-risk controls share one decision surface."
+        description="Holdings, watchlist, normalized exposures, and suggested allocation all sit on one decision surface."
         action={<Badge variant="warning">{risk.totalOpenRiskPct}% open risk</Badge>}
       />
 
@@ -76,16 +62,31 @@ export function PortfolioRiskView({
           <CardHeader>
             <div>
               <CardTitle>Allocation charts</CardTitle>
-              <CardDescription>Portfolio structure and cash positioning.</CardDescription>
+              <CardDescription>Current book structure plus the suggested allocation mix.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <AllocationChart data={summary.allocationMix} />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {summary.allocationMix.map((item) => (
-                <div key={item.name} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm text-muted-foreground">{item.name}</p>
-                  <p className="mt-2 text-2xl font-semibold">{item.value}%</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {suggestedAllocation.buckets.map((bucket) => (
+                <div key={bucket.key} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{bucket.label}</p>
+                    <Badge variant={bucket.deltaPct < 0 ? "warning" : bucket.deltaPct > 0 ? "success" : "neutral"}>
+                      {bucket.deltaPct > 0 ? `+${bucket.deltaPct}%` : `${bucket.deltaPct}%`}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current</p>
+                      <p className="mt-1 text-xl font-semibold">{bucket.currentPct}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</p>
+                      <p className="mt-1 text-xl font-semibold">{bucket.targetPct}%</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">{bucket.rationale}</p>
                 </div>
               ))}
             </div>
@@ -96,7 +97,7 @@ export function PortfolioRiskView({
           <CardHeader>
             <div>
               <CardTitle>Holdings table</CardTitle>
-              <CardDescription>Current positions with open-risk and concentration context.</CardDescription>
+              <CardDescription>Current positions with AED value, normalized weight, and theme tagging.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="overflow-hidden">
@@ -105,12 +106,12 @@ export function PortfolioRiskView({
                 <thead className="border-b border-white/8 bg-[#08111c] text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">Asset</th>
-                    <th className="px-4 py-3 font-medium">Sector</th>
+                    <th className="px-4 py-3 font-medium">Bucket</th>
                     <th className="px-4 py-3 font-medium">Value</th>
                     <th className="px-4 py-3 font-medium">Weight</th>
                     <th className="px-4 py-3 font-medium">PnL</th>
                     <th className="px-4 py-3 font-medium">Open risk</th>
-                    <th className="px-4 py-3 font-medium">Theme</th>
+                    <th className="px-4 py-3 font-medium">Themes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,12 +123,14 @@ export function PortfolioRiskView({
                           <p className="text-xs text-muted-foreground">{holding.name}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground">{holding.sector}</td>
+                      <td className="px-4 py-4">
+                        <Badge variant="neutral">{holding.allocationBucket}</Badge>
+                      </td>
                       <td className="px-4 py-4 text-foreground">{formatCurrency(holding.marketValueAed)}</td>
                       <td className="px-4 py-4 text-foreground">{holding.weightPct}%</td>
                       <td className="px-4 py-4 text-foreground">{formatCurrency(holding.unrealizedPnlAed)}</td>
                       <td className="px-4 py-4 text-foreground">{formatCurrency(holding.openRiskAed)}</td>
-                      <td className="px-4 py-4 text-muted-foreground">{holding.correlationTag}</td>
+                      <td className="px-4 py-4 text-muted-foreground">{holding.themes.join(", ")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -137,53 +140,40 @@ export function PortfolioRiskView({
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Sector, theme, and asset-class exposure</CardTitle>
-              <CardDescription>Exposure map across the current book.</CardDescription>
+              <CardTitle>Exposure map</CardTitle>
+              <CardDescription>Chart-ready exposure rows generated by the portfolio engine.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Sector exposure</p>
-              <div className="grid gap-3">
-                {Object.entries(sectorExposure).map(([sector, exposure]) => (
-                  <div key={sector} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{sector}</p>
-                      <p className="text-sm text-muted-foreground">{exposure.toFixed(1)}%</p>
+          <CardContent className="space-y-5">
+            {[
+              { title: "Sector exposure", items: exposures.sector },
+              { title: "Theme exposure", items: exposures.theme },
+              { title: "Asset-class exposure", items: exposures.assetClass },
+              { title: "Region exposure", items: exposures.region },
+            ].map((section) => (
+              <div key={section.title}>
+                <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {section.title}
+                </p>
+                <div className="grid gap-3">
+                  {section.items.map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">{item.label}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.weightPct}% | {formatCurrency(item.valueAed)}
+                        </p>
+                      </div>
+                      <Progress className="mt-3" value={item.weightPct} />
                     </div>
-                    <Progress className="mt-3" value={(exposure / settings.maxSectorExposurePct) * 100} />
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-            <div>
-              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Theme exposure</p>
-              <div className="grid gap-3">
-                {Object.entries(themeExposure).map(([theme, exposure]) => (
-                  <div key={theme} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{theme}</p>
-                      <p className="text-sm text-muted-foreground">{exposure.toFixed(1)}%</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Asset class exposure</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {Object.entries(assetClassExposure).map(([assetClass, exposure]) => (
-                  <div key={assetClass} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                    <p className="text-sm text-muted-foreground">{assetClass}</p>
-                    <p className="mt-2 text-2xl font-semibold">{exposure.toFixed(1)}%</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -191,30 +181,91 @@ export function PortfolioRiskView({
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Risk summary cards</CardTitle>
-                <CardDescription>Key warnings before additional exposure is added.</CardDescription>
+                <CardTitle>Overweight and underweight map</CardTitle>
+                <CardDescription>Current exposure versus the engine's working targets.</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Max risk per trade</p>
-                <p className="mt-2 text-2xl font-semibold">{settings.maxRiskPerTradePct}%</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Max portfolio open risk</p>
-                <p className="mt-2 text-2xl font-semibold">{settings.maxPortfolioOpenRiskPct}%</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Max single position</p>
-                <p className="mt-2 text-2xl font-semibold">{settings.maxSinglePositionPct}%</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Max sector exposure</p>
-                <p className="mt-2 text-2xl font-semibold">{settings.maxSectorExposurePct}%</p>
-              </div>
+            <CardContent className="space-y-3">
+              {overUnderweights.map((item) => (
+                <div key={`${item.dimension}-${item.label}`} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{item.label}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.dimension}</p>
+                    </div>
+                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {item.currentPct}% current vs {item.targetPct}% target
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{item.rationale}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Watchlist</CardTitle>
+                <CardDescription>Mock candidates with allocation intent and target entry zones.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {watchlist.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{item.ticker}</p>
+                      <p className="text-sm text-muted-foreground">{item.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.priority === "High" ? "warning" : item.priority === "Medium" ? "info" : "neutral"}>
+                        {item.priority}
+                      </Badge>
+                      <Badge variant="neutral">{item.candidateBucket}</Badge>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{item.thesis}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Entry: {item.targetEntry} | Suggested size: {item.candidateAllocationPct}%
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Risk summary cards</CardTitle>
+              <CardDescription>Configured portfolio limits and live open-risk contribution.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="text-sm text-muted-foreground">Max risk per trade</p>
+              <p className="mt-2 text-2xl font-semibold">{settings.maxRiskPerTradePct}%</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="text-sm text-muted-foreground">Max portfolio open risk</p>
+              <p className="mt-2 text-2xl font-semibold">{settings.maxPortfolioOpenRiskPct}%</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="text-sm text-muted-foreground">Max single position</p>
+              <p className="mt-2 text-2xl font-semibold">{settings.maxSinglePositionPct}%</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+              <p className="text-sm text-muted-foreground">Max sector exposure</p>
+              <p className="mt-2 text-2xl font-semibold">{settings.maxSectorExposurePct}%</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <div>
@@ -257,18 +308,12 @@ export function PortfolioRiskView({
                 <CardDescription>Caps are enforced before new trades are approved.</CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               {risk.concentrationChecks.map((item) => (
                 <div key={item.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{item.label}</p>
-                    <Badge
-                      variant={
-                        item.status === "Breach" ? "danger" : item.status === "Watch" ? "warning" : "success"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
+                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {item.exposurePct}% exposure vs {item.thresholdPct}% threshold
@@ -301,17 +346,7 @@ export function PortfolioRiskView({
                 <div key={suggestion.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{suggestion.label}</p>
-                    <Badge
-                      variant={
-                        suggestion.action === "Trim"
-                          ? "warning"
-                          : suggestion.action === "Increase"
-                            ? "success"
-                            : "neutral"
-                      }
-                    >
-                      {suggestion.action}
-                    </Badge>
+                    <Badge variant={actionVariant(suggestion.action)}>{suggestion.action}</Badge>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{suggestion.rationale}</p>
                 </div>

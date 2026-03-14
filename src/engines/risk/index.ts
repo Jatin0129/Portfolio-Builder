@@ -1,4 +1,9 @@
-import { buildAllocationSuggestions, buildConcentrationChecks, buildCorrelationClusters } from "@/engines/portfolio";
+import {
+  buildAllocationSuggestions,
+  buildConcentrationChecks,
+  buildCorrelationClusters,
+  normalizeHoldings,
+} from "@/engines/portfolio";
 import type {
   Holding,
   PortfolioRiskSnapshot,
@@ -9,10 +14,11 @@ import type {
 } from "@/types";
 
 export function evaluateTradeRisk(
-  trade: Omit<TradeIdea, "riskVerdict">,
+  trade: Omit<TradeIdea, "riskVerdict" | "insight">,
   holdings: Holding[],
   settings: RiskSettings,
 ): RiskVerdict {
+  const normalizedHoldings = normalizeHoldings(holdings, settings);
   const maxRiskAed = (settings.portfolioValueAed * settings.maxRiskPerTradePct) / 100;
   const maxPositionAed = Number(
     Math.min(
@@ -21,19 +27,23 @@ export function evaluateTradeRisk(
     ).toFixed(0),
   );
 
-  const currentOpenRiskAed = holdings.reduce((sum, holding) => sum + holding.openRiskAed, 0);
+  const currentOpenRiskAed = normalizedHoldings.reduce((sum, holding) => sum + holding.openRiskAed, 0);
   const projectedOpenRiskPct =
     ((currentOpenRiskAed + maxRiskAed) / settings.portfolioValueAed) * 100;
 
-  const sameSectorExposure = holdings
+  const sameSectorExposure = normalizedHoldings
     .filter((holding) => holding.sector === trade.sector)
     .reduce((sum, holding) => sum + holding.weightPct, 0);
 
-  const sameThemeExposure = holdings
-    .filter(
-      (holding) =>
-        holding.correlationTag.toLowerCase().includes(trade.sector.toLowerCase()) ||
-        (holding.sector === "Semiconductors" && trade.sector === "Servers"),
+  const sameThemeExposure = normalizedHoldings
+    .filter((holding) =>
+      holding.themes.some((theme) =>
+        trade.themes.some(
+          (tradeTheme) =>
+            theme.toLowerCase().includes(tradeTheme.toLowerCase()) ||
+            tradeTheme.toLowerCase().includes(theme.toLowerCase()),
+        ),
+      ),
     )
     .reduce((sum, holding) => sum + holding.weightPct, 0);
 
@@ -84,6 +94,12 @@ export function evaluateTradeRisk(
         : decision === "REDUCE"
           ? "Risk engine allows the trade only with reduced sizing."
           : "Risk engine rejects the trade under current portfolio constraints.",
+    explanation:
+      decision === "APPROVE"
+        ? "The setup fits the current portfolio rules, and no major concentration or open-risk limits are breached."
+        : decision === "REDUCE"
+          ? "The idea is acceptable only with smaller sizing because volatility, concentration, or correlation inputs are not clean enough for full size."
+          : "The trade violates one or more portfolio controls, so capital should not be allocated under current conditions.",
     messages,
     approvedRiskAed: decision === "REJECT" ? 0 : Number(maxRiskAed.toFixed(0)),
     maxPositionAed: decision === "REJECT" ? 0 : maxPositionAed,
@@ -97,7 +113,8 @@ export function buildPortfolioRiskSnapshot(
   const concentrationChecks = buildConcentrationChecks(holdings, settings);
   const correlationClusters = buildCorrelationClusters(holdings, settings);
   const suggestions = buildAllocationSuggestions(concentrationChecks, correlationClusters);
-  const totalOpenRiskAed = holdings.reduce((sum, holding) => sum + holding.openRiskAed, 0);
+  const normalizedHoldings = normalizeHoldings(holdings, settings);
+  const totalOpenRiskAed = normalizedHoldings.reduce((sum, holding) => sum + holding.openRiskAed, 0);
 
   return {
     concentrationChecks,

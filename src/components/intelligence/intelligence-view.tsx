@@ -1,12 +1,16 @@
+"use client";
+
+import { useState } from "react";
 import { CandlestickChart, Globe2, Landmark, ScanSearch } from "lucide-react";
 
+import { TradeInsightDrawer } from "@/components/trade-insight/trade-insight-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { formatPercent } from "@/lib/utils";
-import type { IntelligenceSnapshot } from "@/types";
+import type { IntelligenceSnapshot, TradeIdea } from "@/types";
 
 function severityVariant(severity: string) {
   if (severity === "Critical") return "danger";
@@ -16,6 +20,8 @@ function severityVariant(severity: string) {
 }
 
 export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot }) {
+  const [selected, setSelected] = useState<TradeIdea | null>(null);
+
   return (
     <div className="space-y-6">
       <SectionHeading
@@ -28,8 +34,8 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           hint={`${snapshot.regime.confidence}% confidence`}
-          label="Regime stance"
-          value={snapshot.regime.stance}
+          label="Regime posture"
+          value={snapshot.regime.posture}
         />
         <MetricCard label="Macro events" value={snapshot.macroEvents.length} hint="Upcoming calendar items" />
         <MetricCard
@@ -45,12 +51,24 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
           <CardHeader>
             <div>
               <CardTitle>Macro calendar</CardTitle>
-              <CardDescription>High-impact releases and how they alter the regime.</CardDescription>
+              <CardDescription>{snapshot.macroCalendar.headline}</CardDescription>
             </div>
             <Landmark className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent>
-            {snapshot.macroEvents.map((event) => (
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
+              <p className="text-sm font-medium">{snapshot.macroSummary.headline}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{snapshot.macroSummary.explanation}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {snapshot.macroState.summarySignals.map((signal) => (
+                  <div key={signal} className="rounded-2xl border border-white/8 bg-[#08111c] p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Signal</p>
+                    <p className="mt-2 text-sm font-medium">{signal}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {snapshot.macroCalendar.items.map((event) => (
               <div key={event.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -64,7 +82,8 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                   </div>
                   <p className="text-sm text-muted-foreground">Consensus: {event.consensus}</p>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">{event.implication}</p>
+                <p className="mt-3 text-sm text-muted-foreground">{event.watchFor}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{event.explanation}</p>
               </div>
             ))}
           </CardContent>
@@ -74,23 +93,43 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
           <CardHeader>
             <div>
               <CardTitle>Geopolitical board</CardTitle>
-              <CardDescription>Severity-scored context for cross-asset positioning.</CardDescription>
+              <CardDescription>{snapshot.geopoliticalBoard.summary.headline}</CardDescription>
             </div>
             <Globe2 className="h-4 w-4 text-warning" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-              <p className="text-sm text-muted-foreground">Regime explanation panel</p>
-              <p className="mt-2 text-sm leading-6 text-foreground">{snapshot.regime.explanation}</p>
+              <p className="text-sm text-muted-foreground">Overlay posture</p>
+              <p className="mt-2 text-sm leading-6 text-foreground">{snapshot.geopoliticalBoard.summary.posture}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {snapshot.geopoliticalBoard.summary.dominantChannels.map((channel) => (
+                  <Badge key={channel} variant="neutral">
+                    {channel}
+                  </Badge>
+                ))}
+              </div>
             </div>
             {snapshot.geopoliticalEvents.map((event) => (
               <div key={event.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">{event.title}</p>
+                  <div>
+                    <p className="font-medium">{event.title}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {event.category}
+                    </p>
+                  </div>
                   <Badge variant={severityVariant(event.severity)}>{event.severity}</Badge>
                 </div>
                 <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{event.status}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{event.implication}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {event.chips.map((chip) => (
+                    <Badge key={chip} variant="neutral">
+                      {chip}
+                    </Badge>
+                  ))}
+                  <Badge variant="info">{event.actionSuggestion}</Badge>
+                </div>
               </div>
             ))}
           </CardContent>
@@ -158,7 +197,12 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
             </CardHeader>
             <CardContent>
               {snapshot.rankedAssets.map((asset, index) => (
-                <div key={asset.ticker} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <button
+                  key={asset.ticker}
+                  className="w-full rounded-2xl border border-white/8 bg-white/4 p-4 text-left transition hover:border-primary/40 hover:bg-white/6"
+                  onClick={() => setSelected(asset)}
+                  type="button"
+                >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <div className="flex items-center gap-3">
@@ -189,7 +233,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                       <p className="mt-1 font-medium">{asset.catalystStrength}</p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </CardContent>
           </Card>
@@ -218,6 +262,8 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
           </Card>
         </div>
       </div>
+
+      <TradeInsightDrawer onClose={() => setSelected(null)} open={Boolean(selected)} trade={selected} />
     </div>
   );
 }

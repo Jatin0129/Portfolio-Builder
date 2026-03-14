@@ -5,6 +5,7 @@ import {
   seedHoldings,
   seedJournalEntries,
   seedMacroEvents,
+  seedWatchlistItems,
 } from "../src/mock-data/seed-data";
 
 const prisma = new PrismaClient();
@@ -12,6 +13,7 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.asset.createMany({ data: seedAssets, skipDuplicates: true });
   await prisma.holding.createMany({ data: seedHoldings, skipDuplicates: true });
+  await prisma.watchlistItem.createMany({ data: seedWatchlistItems, skipDuplicates: true });
   await prisma.macroEvent.createMany({ data: seedMacroEvents, skipDuplicates: true });
   await prisma.geopoliticalEvent.createMany({
     data: seedGeopoliticalEvents,
