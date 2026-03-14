@@ -1,9 +1,14 @@
+import { Prisma } from "@prisma/client";
 import { getAssetUniverse, getGeopoliticalBoard, getMacroEvents } from "@/engines";
 import { holdings, journalEntries, watchlist } from "@/mock-data";
 
 const seededAssets = getAssetUniverse();
 const geopoliticalBoard = getGeopoliticalBoard();
 const seededMacroEvents = getMacroEvents();
+
+function toJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 export const seedAssets = seededAssets.map((asset) => ({
   ticker: asset.ticker,
@@ -12,7 +17,7 @@ export const seedAssets = seededAssets.map((asset) => ({
   region: asset.region,
   sector: asset.sector,
   currency: asset.currency,
-  themes: asset.themes,
+  themes: toJson(asset.themes),
   allocationBucket: asset.allocationBucket,
   price: asset.price,
   changePct: asset.changePct,
@@ -27,17 +32,17 @@ export const seedAssets = seededAssets.map((asset) => ({
   liquidityScore: asset.liquidity,
   catalystScore: asset.catalystStrength,
   opportunityScore: 0,
-  technicalSetup: asset.technicalSetup,
-  technicalInsight: asset.technicalInsight,
-  executionPlan: asset.executionPlan,
+  technicalSetup: toJson(asset.technicalSetup),
+  technicalInsight: toJson(asset.technicalInsight),
+  executionPlan: toJson(asset.executionPlan),
   catalyst: asset.catalyst,
   direction: asset.direction,
   stopDistancePct: asset.stopDistancePct,
   conviction: asset.conviction,
   shortThesis: asset.shortThesis,
   regimeFitText: asset.regimeFitText,
-  macroReasons: asset.macroReasons,
-  geopoliticalNotes: asset.geopoliticalReasons,
+  macroReasons: toJson(asset.macroReasons),
+  geopoliticalNotes: toJson(asset.geopoliticalReasons),
 }));
 
 export const seedHoldings = holdings.map((holding) => ({
@@ -47,7 +52,7 @@ export const seedHoldings = holdings.map((holding) => ({
   sector: holding.sector,
   region: holding.region,
   currency: holding.currency,
-  themes: holding.themes,
+  themes: toJson(holding.themes),
   allocationBucket: holding.allocationBucket,
   quantity: holding.quantity,
   avgCost: holding.avgCost,
@@ -68,7 +73,7 @@ export const seedWatchlistItems = watchlist.map((item) => ({
   sector: item.sector,
   region: item.region,
   currency: item.currency,
-  themes: item.themes,
+  themes: toJson(item.themes),
   priority: item.priority,
   targetEntry: item.targetEntry,
   thesis: item.thesis,
@@ -96,12 +101,12 @@ export const seedGeopoliticalEvents = geopoliticalBoard.events.map((event) => ({
   severity: event.severity,
   severityScore: event.severityScore,
   status: event.status,
-  affectedRegions: event.affectedRegions,
-  transmissionChannels: event.transmissionChannels,
-  beneficiaries: event.beneficiaries,
-  losers: event.losers,
+  affectedRegions: toJson(event.affectedRegions),
+  transmissionChannels: toJson(event.transmissionChannels),
+  beneficiaries: toJson(event.beneficiaries),
+  losers: toJson(event.losers),
   actionSuggestion: event.actionSuggestion,
-  chips: event.chips,
+  chips: toJson(event.chips),
   implication: event.implication,
 }));
 
