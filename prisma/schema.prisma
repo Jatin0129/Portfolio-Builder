@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeDirection {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+  WATCHLIST
+}
+
+model Asset {
+  id                String      @id @default(cuid())
+  ticker            String      @unique
+  name              String
+  assetClass        String
+  region            String
+  sector            String
+  currency          String
+  price             Float
+  changePct         Float
+  volumeScore       Int
+  momentumScore     Int
+  trendScore        Int
+  relativeScore     Int
+  volatilityScore   Int
+  valuationScore    Int
+  macroFitScore     Int
+  geoFitScore       Int
+  liquidityScore    Int
+  catalystScore     Int
+  opportunityScore  Int
+  technicalSetup    String
+  macroReasons      Json
+  geopoliticalNotes Json
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model Holding {
+  id              String   @id @default(cuid())
+  ticker          String   @unique
+  name            String
+  sector          String
+  region          String
+  quantity        Float
+  avgCost         Float
+  marketPrice     Float
+  marketValueAed  Float
+  unrealizedPnlAed Float
+  weightPct       Float
+  beta            Float
+  correlationTag  String
+  stopDistancePct Float
+  openRiskAed     Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MacroEvent {
+  id          String   @id @default(cuid())
+  title       String
+  region      String
+  eventDate   DateTime
+  severity    String
+  category    String
+  consensus   String
+  implication String
+  createdAt   DateTime @default(now())
+}
+
+model GeopoliticalEvent {
+  id          String   @id @default(cuid())
+  title       String
+  region      String
+  severity    String
+  status      String
+  implication String
+  createdAt   DateTime @default(now())
+}
+
+model JournalEntry {
+  id                 String      @id @default(cuid())
+  ticker             String
+  setupName          String
+  direction          TradeDirection
+  status             TradeStatus
+  openedAt           DateTime
+  closedAt           DateTime?
+  entryPrice         Float
+  exitPrice          Float?
+  thesis             String
+  outcomeR           Float?
+  disciplineScore    Int
+  mistakeTag         String?
+  reviewNotes        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
