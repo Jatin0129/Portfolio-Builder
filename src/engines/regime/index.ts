@@ -1,11 +1,15 @@
 import type {
+  AssetSignalInput,
   BreadthState,
+  GeopoliticalBoard,
   RegimeInput,
+  RegimeFitScore,
   RegimePosture,
   RegimeSignalBreakdown,
   RegimeSnapshot,
   Severity,
 } from "@/types";
+import { clamp } from "@/lib/utils";
 
 const signalWeights = {
   majorIndexTrend: { bullish: 3, mixed: 0, bearish: -3 },
@@ -200,5 +204,132 @@ export function classifyRegime(input: RegimeInput): RegimeSnapshot {
     drivers,
     alerts,
     signals,
+  };
+}
+
+function hasTheme(asset: AssetSignalInput, pattern: string) {
+  const lowered = pattern.toLowerCase();
+  return asset.themes.some((theme) => theme.toLowerCase().includes(lowered));
+}
+
+export function scoreAssetRegimeFit(
+  asset: AssetSignalInput,
+  regime: RegimeSnapshot,
+  geopoliticalBoard?: GeopoliticalBoard,
+): RegimeFitScore {
+  let score = 55;
+  const reasons: string[] = [];
+
+  switch (regime.posture) {
+    case "aggressive":
+      if (asset.allocationBucket === "core") {
+        score += 8;
+        reasons.push("Aggressive regime posture supports core participation ideas.");
+      } else if (asset.allocationBucket === "tactical") {
+        score += 10;
+        reasons.push("Aggressive regime posture supports tactical beta and leadership exposure.");
+      } else {
+        score -= 10;
+        reasons.push("Aggressive regime posture reduces the need for large hedge allocations.");
+      }
+      break;
+    case "balanced":
+      if (asset.allocationBucket === "core") {
+        score += 7;
+        reasons.push("Balanced posture still favors durable core exposure.");
+      } else if (asset.allocationBucket === "tactical") {
+        score += 3;
+        reasons.push("Balanced posture allows tactical adds, but only selectively.");
+      } else {
+        score += 6;
+        reasons.push("Balanced posture still benefits from keeping explicit hedges in the mix.");
+      }
+      break;
+    case "defensive":
+      if (asset.allocationBucket === "hedge") {
+        score += 12;
+        reasons.push("Defensive posture increases the value of hedge sleeves.");
+      } else if (asset.allocationBucket === "core") {
+        score += 2;
+        reasons.push("Defensive posture still allows some high-quality core exposure.");
+      } else {
+        score -= 8;
+        reasons.push("Defensive posture argues against aggressive tactical risk-taking.");
+      }
+      break;
+    default:
+      if (asset.allocationBucket === "hedge") {
+        score += 10;
+        reasons.push("High-cash posture prioritizes capital preservation and hedges.");
+      } else if (asset.allocationBucket === "tactical") {
+        score -= 12;
+        reasons.push("High-cash posture strongly penalizes tactical additions.");
+      } else {
+        score -= 4;
+        reasons.push("High-cash posture lowers appetite for even core exposure.");
+      }
+      break;
+  }
+
+  if (hasTheme(asset, "ai") || asset.sector === "Semiconductors" || asset.sector === "Servers") {
+    if (regime.posture === "aggressive") {
+      score += 7;
+      reasons.push("Leadership and AI-linked exposure fit a supportive risk-on regime.");
+    } else if (regime.posture === "balanced") {
+      score += 3;
+      reasons.push("AI leadership remains acceptable in a balanced regime, but with selectivity.");
+    } else {
+      score -= 7;
+      reasons.push("Leadership beta is less aligned when the regime turns defensive.");
+    }
+  }
+
+  if (asset.sector === "Precious Metals" || hasTheme(asset, "defensive") || hasTheme(asset, "gold")) {
+    if (regime.posture === "defensive" || regime.posture === "high cash") {
+      score += 8;
+      reasons.push("Defensive and gold-linked exposure is more useful when regime stress rises.");
+    } else if (regime.posture === "aggressive") {
+      score -= 3;
+      reasons.push("Heavy hedge exposure is a mild drag when the regime is fully constructive.");
+    }
+  }
+
+  if (asset.sector === "Industrials" || hasTheme(asset, "cyclical") || hasTheme(asset, "infrastructure")) {
+    if (regime.posture === "aggressive" || regime.posture === "balanced") {
+      score += 5;
+      reasons.push("Cyclical participation fits better while the regime still allows selective risk-taking.");
+    } else {
+      score -= 5;
+      reasons.push("Cyclicals lose regime fit when posture shifts defensive.");
+    }
+  }
+
+  if (hasTheme(asset, "rate sensitive") || hasTheme(asset, "high beta")) {
+    const yieldHeadwind = regime.alerts.some((alert) =>
+      alert.toLowerCase().includes("yield") || alert.toLowerCase().includes("volatility"),
+    );
+    if (yieldHeadwind) {
+      score -= 5;
+      reasons.push("Rate-sensitive or high-beta themes are less attractive under current regime alerts.");
+    }
+  }
+
+  if (geopoliticalBoard && geopoliticalBoard.summary.overlayScore >= 80) {
+    if (asset.allocationBucket === "hedge") {
+      score += 6;
+      reasons.push("Elevated geopolitical overlay strengthens the case for hedge-oriented assets.");
+    } else if (asset.allocationBucket === "tactical") {
+      score -= 4;
+      reasons.push("Elevated geopolitical overlay caps conviction in tactical exposure.");
+    }
+  }
+
+  const finalScore = Math.round(clamp(score, 20, 95));
+
+  return {
+    score: finalScore,
+    label:
+      finalScore >= 75 ? "Strong regime fit" : finalScore >= 60 ? "Supportive regime fit" : "Weak regime fit",
+    reasons: reasons.slice(0, 4),
   };
 }

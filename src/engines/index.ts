@@ -6,3 +6,4 @@ export * from "@/engines/market-data";
 export * from "@/engines/portfolio";
 export * from "@/engines/regime";
 export * from "@/engines/risk";
+export * from "@/engines/trade-ideas";

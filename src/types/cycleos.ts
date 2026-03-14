@@ -215,6 +215,12 @@ export interface AssetSignalInput extends AssetSignalSeed {
 
 export interface TradeIdea extends AssetSignalInput {
   factorBreakdown: FactorScore[];
+  regimeFit: number;
+  regimeReasons: string[];
+  totalScore: number;
+  confidence: number;
+  thesis: string;
+  scores: TradeIdeaScores;
   opportunityScore: number;
   portfolioFit: PortfolioFit;
   riskVerdict: RiskVerdict;
@@ -365,6 +371,41 @@ export interface GeopoliticalFitScore {
   score: number;
   label: string;
   reasons: string[];
+}
+
+export interface RegimeFitScore {
+  score: number;
+  label: string;
+  reasons: string[];
+}
+
+export interface TradeIdeaScores {
+  factorScore: number;
+  macroFit: number;
+  geopoliticalFit: number;
+  regimeFit: number;
+  totalScore: number;
+  confidence: number;
+}
+
+export interface TradeIdeaRankedSummary {
+  ticker: string;
+  totalScore: number;
+  confidence: number;
+  thesis: string;
+  macroReasons: string[];
+  geopoliticalReasons: string[];
+  factorBreakdown: FactorScore[];
+  entry: string;
+  stop: string;
+  targets: string[];
+  size: string;
+  riskAed: number;
+  verdict: {
+    decision: RiskDecision;
+    summary: string;
+    explanation: string;
+  };
 }
 
 export interface MacroCalendarItem {
@@ -654,4 +695,17 @@ export interface ReviewSnapshot {
   entries: JournalEntry[];
   analytics: SetupAnalytics;
   openTrades: TradeIdea[];
+}
+
+export interface TradeIdeaGenerationContext {
+  marketSummary: MarketSummary;
+  macroSummary: MacroSummary;
+  geopoliticalBoard: GeopoliticalBoard;
+  regime: RegimeSnapshot;
+}
+
+export interface TradeIdeaGeneratorResult {
+  context: TradeIdeaGenerationContext;
+  ideas: TradeIdea[];
+  rankedSummaries: TradeIdeaRankedSummary[];
 }
