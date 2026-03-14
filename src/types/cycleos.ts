@@ -2,6 +2,15 @@ export type TradeDirection = "LONG" | "SHORT";
 export type TradeStatus = "OPEN" | "CLOSED" | "WATCHLIST";
 export type Severity = "Low" | "Moderate" | "High" | "Critical";
 export type RiskDecision = "APPROVE" | "REDUCE" | "REJECT";
+export type SettingsProfile = "conservative" | "balanced" | "aggressive";
+export type HoldingHorizon = "intraday" | "swing" | "position";
+export type AssetUniversePreference =
+  | "US stocks"
+  | "ETFs"
+  | "gold proxy"
+  | "energy proxy"
+  | "bond proxy"
+  | "crypto proxy";
 export type AgentName =
   | "News Agent"
   | "Macro/Geopolitics Agent"
@@ -81,6 +90,37 @@ export type AllocationBucketKey = "core" | "tactical" | "hedge" | "cash";
 export type ExposureDimension = "sector" | "theme" | "asset class" | "region";
 export type OverUnderweightStatus = "underweight" | "overweight" | "neutral";
 export type PriorityTag = "High" | "Medium" | "Low";
+export type JournalBehaviorTag =
+  | "oversized-trade"
+  | "early-exit"
+  | "missed-stop"
+  | "overtrading"
+  | "followed-plan"
+  | "rule-break";
+
+export interface AlertThresholds {
+  openRiskPct: number;
+  singlePositionPct: number;
+  volatilityAlertLevel: number;
+  macroSeverityMinimum: Severity;
+}
+
+export interface UserSettings {
+  id: string;
+  totalCapital: number;
+  reportingCurrency: string;
+  cashAed: number;
+  maxRiskPerTradePct: number;
+  maxPortfolioOpenRiskPct: number;
+  maxDrawdownThresholdPct: number;
+  maxSinglePositionPct: number;
+  maxSectorExposurePct: number;
+  maxCorrelationClusterPct: number;
+  preferredHoldingHorizon: HoldingHorizon;
+  preferredAssetUniverse: AssetUniversePreference[];
+  alertThresholds: AlertThresholds;
+  profile: SettingsProfile;
+}
 
 export interface FactorWeightConfig {
   momentum: number;
@@ -495,13 +535,20 @@ export interface PortfolioWatchlistItem {
 }
 
 export interface RiskSettings {
-  portfolioValueAed: number;
+  id: string;
+  totalCapital: number;
+  reportingCurrency: string;
   cashAed: number;
   maxRiskPerTradePct: number;
   maxPortfolioOpenRiskPct: number;
+  maxDrawdownThresholdPct: number;
   maxSinglePositionPct: number;
   maxSectorExposurePct: number;
   maxCorrelationClusterPct: number;
+  preferredHoldingHorizon: HoldingHorizon;
+  preferredAssetUniverse: AssetUniversePreference[];
+  alertThresholds: AlertThresholds;
+  profile: SettingsProfile;
 }
 
 export interface ConcentrationItem {
@@ -595,6 +642,7 @@ export interface JournalEntry {
   id: string;
   ticker: string;
   setupName: string;
+  setupTags: string[];
   direction: TradeDirection;
   status: TradeStatus;
   openedAt: string;
@@ -602,19 +650,81 @@ export interface JournalEntry {
   entryPrice: number;
   exitPrice?: number;
   thesis: string;
+  entryReasons: string[];
+  exitReasons: string[];
+  rulesFollowed: boolean;
+  plannedRiskPct: number;
+  plannedRiskAed: number;
+  realizedPnlPct?: number;
+  realizedPnlAed?: number;
   outcomeR?: number;
   disciplineScore: number;
   mistakeTag?: string;
+  behaviorTags: JournalBehaviorTag[];
+  holdingHorizon: HoldingHorizon;
   reviewNotes: string;
 }
 
-export interface SetupAnalytics {
+export interface JournalAnalytics {
   winRate: number;
+  averageGain: number;
+  averageLoss: number;
+  expectancy: number;
   averageR: number;
-  bestSetup: string;
+  bestSetupType: string;
+  worstSetupType: string;
   disciplineAverage: number;
   commonMistake: string;
   curve: { month: string; score: number }[];
+}
+
+export type SetupAnalytics = JournalAnalytics;
+
+export interface BehavioralFlag {
+  id: string;
+  ticker: string;
+  setupName: string;
+  detail: string;
+  date: string;
+}
+
+export interface OvertradingPattern {
+  date: string;
+  tradeCount: number;
+  note: string;
+}
+
+export interface BehavioralReviewSnapshot {
+  oversizedTrades: BehavioralFlag[];
+  earlyExits: BehavioralFlag[];
+  missedStops: BehavioralFlag[];
+  overtradingPatterns: OvertradingPattern[];
+}
+
+export interface JournalEntryInput {
+  ticker: string;
+  setupName: string;
+  setupTags: string[];
+  direction: TradeDirection;
+  openedAt: string;
+  entryPrice: number;
+  thesis: string;
+  entryReasons: string[];
+  rulesFollowed: boolean;
+  plannedRiskPct: number;
+  plannedRiskAed: number;
+  disciplineScore: number;
+  holdingHorizon: HoldingHorizon;
+  reviewNotes: string;
+}
+
+export interface JournalExitInput {
+  id: string;
+  closedAt: string;
+  exitPrice: number;
+  exitReasons: string[];
+  rulesFollowed: boolean;
+  reviewNotes: string;
 }
 
 export interface DashboardAlert {
@@ -693,8 +803,18 @@ export interface IntelligenceSnapshot {
 
 export interface ReviewSnapshot {
   entries: JournalEntry[];
-  analytics: SetupAnalytics;
+  analytics: JournalAnalytics;
+  behavior: BehavioralReviewSnapshot;
   openTrades: TradeIdea[];
+}
+
+export interface SettingsSnapshot {
+  settings: UserSettings;
+  profileGuidance: Array<{
+    profile: SettingsProfile;
+    summary: string;
+    focus: string;
+  }>;
 }
 
 export interface TradeIdeaGenerationContext {

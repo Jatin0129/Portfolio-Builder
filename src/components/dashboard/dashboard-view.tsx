@@ -28,7 +28,13 @@ function riskVariant(decision: TradeIdea["riskVerdict"]["decision"]) {
 
 export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   const [selected, setSelected] = useState<TradeIdea | null>(null);
+  const [ideaFilter, setIdeaFilter] = useState<"ALL" | "APPROVE" | "REDUCE" | "DEFENSIVE">("ALL");
   const portfolio = snapshot.portfolioSummary;
+  const filteredIdeas = snapshot.topTradeIdeas.filter((trade) => {
+    if (ideaFilter === "ALL") return true;
+    if (ideaFilter === "DEFENSIVE") return trade.allocationBucket === "hedge";
+    return trade.riskVerdict.decision === ideaFilter;
+  });
 
   return (
     <div className="space-y-6">
@@ -216,13 +222,28 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <CardTitle>Top trade ideas</CardTitle>
               <CardDescription>Ranked by opportunity score and filtered through portfolio rules.</CardDescription>
             </div>
-            <Badge variant="neutral">Click for full insight</Badge>
+            <div className="flex flex-wrap gap-2">
+              {(["ALL", "APPROVE", "REDUCE", "DEFENSIVE"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
+                    ideaFilter === filter
+                      ? "border-primary/40 bg-primary/10 text-foreground"
+                      : "border-white/10 bg-white/5 text-muted-foreground"
+                  }`}
+                  onClick={() => setIdeaFilter(filter)}
+                  type="button"
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {snapshot.topTradeIdeas.map((trade) => (
+            {filteredIdeas.map((trade) => (
               <button
                 key={trade.ticker}
-                className="w-full rounded-2xl border border-white/8 bg-white/3 p-4 text-left transition hover:border-primary/40 hover:bg-white/5"
+                className="w-full rounded-[24px] border border-white/10 bg-white/4 p-5 text-left transition hover:border-primary/35 hover:bg-white/6"
                 onClick={() => setSelected(trade)}
                 type="button"
               >
@@ -233,13 +254,13 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                       <Badge variant={riskVariant(trade.riskVerdict.decision)}>{trade.riskVerdict.decision}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{trade.name}</p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <span>{trade.sector}</span>
-                      <span>{trade.region}</span>
-                      <span>{trade.averageVolumeLabel} liquidity</span>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="neutral">{trade.sector}</Badge>
+                      <Badge variant="neutral">{trade.region}</Badge>
+                      <Badge variant="info">{trade.allocationBucket}</Badge>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-3 gap-6 rounded-[20px] border border-white/10 bg-[#0d1624] px-4 py-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Score</p>
                       <p className="mt-2 text-2xl font-semibold">{trade.opportunityScore}</p>
@@ -269,7 +290,7 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
             </CardHeader>
             <CardContent>
               {snapshot.alerts.map((alert) => (
-                <div key={alert.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <div key={alert.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <p className="font-medium">{alert.title}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{alert.message}</p>
                 </div>
@@ -287,7 +308,7 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
             </CardHeader>
             <CardContent>
               {snapshot.topRisks.map((risk) => (
-                <div key={risk.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <div key={risk.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{risk.title}</p>
                     <Badge

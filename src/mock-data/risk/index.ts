@@ -1,53 +1,88 @@
-import type { DashboardAlert, RiskItem, RiskSettings } from "@/types";
+import type { DashboardAlert, RiskItem, RiskSettings, UserSettings } from "@/types";
+
+export const defaultUserSettings: UserSettings = {
+  id: "default",
+  totalCapital: 1250000,
+  reportingCurrency: "AED",
+  cashAed: 180000,
+  maxRiskPerTradePct: 1,
+  maxPortfolioOpenRiskPct: 5.5,
+  maxDrawdownThresholdPct: 10,
+  maxSinglePositionPct: 16,
+  maxSectorExposurePct: 28,
+  maxCorrelationClusterPct: 34,
+  preferredHoldingHorizon: "swing",
+  preferredAssetUniverse: [
+    "US stocks",
+    "ETFs",
+    "gold proxy",
+    "energy proxy",
+    "bond proxy",
+    "crypto proxy",
+  ],
+  alertThresholds: {
+    openRiskPct: 4.8,
+    singlePositionPct: 14,
+    volatilityAlertLevel: 22,
+    macroSeverityMinimum: "High",
+  },
+  profile: "balanced",
+};
 
 export const riskSettings: RiskSettings = {
-  portfolioValueAed: 685000,
-  cashAed: 98000,
-  maxRiskPerTradePct: 1.1,
-  maxPortfolioOpenRiskPct: 5.5,
-  maxSinglePositionPct: 18,
-  maxSectorExposurePct: 35,
-  maxCorrelationClusterPct: 42,
+  ...defaultUserSettings,
 };
 
 export const alerts: DashboardAlert[] = [
   {
     id: "alert-1",
-    title: "Macro event cluster",
+    title: "Event cluster inside 72 hours",
     type: "macro",
-    message: "CPI and FOMC both hit within 48 hours. Reduce fresh sizing on high-beta names before confirmation.",
+    message: "US CPI, the FOMC, and a 10Y auction all arrive in the same tactical window. Fresh high-beta risk should stay selective.",
   },
   {
     id: "alert-2",
-    title: "Tech concentration",
+    title: "AI cluster nearing tolerance band",
     type: "risk",
-    message: "Current and proposed exposure would push technology-linked clusters above the configured threshold.",
+    message: "Existing semiconductor, software, and crypto-beta exposure is close to the correlation threshold defined in settings.",
   },
   {
     id: "alert-3",
-    title: "Catalyst watch",
+    title: "Gold and duration hedges remain useful",
     type: "catalyst",
-    message: "NVDA has the strongest near-term catalyst stack across the current universe.",
+    message: "Real-yield sensitivity and geopolitical stress still justify keeping GLD and TLT near working size.",
+  },
+  {
+    id: "alert-4",
+    title: "Crypto proxy risk on watch",
+    type: "risk",
+    message: "IBIT and high-beta tech are moving together enough that crypto adds should be funded, not layered on top.",
   },
 ];
 
 export const topRisks: RiskItem[] = [
   {
     id: "risk-1",
-    title: "Policy surprise reprices yields",
+    title: "Higher-for-longer rates shock",
     severity: "Critical",
-    explanation: "A hawkish Fed tone would pressure long-duration growth and compress current momentum leadership.",
+    explanation: "A hawkish Fed path would pressure long-duration equities, crypto proxies, and crowded growth leadership simultaneously.",
   },
   {
     id: "risk-2",
-    title: "Crowded semiconductor exposure",
+    title: "Trade and shipping shock spills into inflation",
     severity: "High",
-    explanation: "Existing holdings plus watchlist ideas cluster risk in AI infrastructure and semicap.",
+    explanation: "Any escalation in logistics or energy routes would reprice inflation expectations and hurt cyclicals plus consumer sensitivity.",
   },
   {
     id: "risk-3",
-    title: "Shipping disruption spillover",
+    title: "Crowded AI leadership unwinds",
+    severity: "High",
+    explanation: "Semiconductor, software, and crypto-beta leadership is strong, but a factor unwind would ripple through multiple portfolio sleeves.",
+  },
+  {
+    id: "risk-4",
+    title: "Growth scare broadens beyond manufacturing",
     severity: "Moderate",
-    explanation: "Freight and energy effects could re-ignite inflation expectations and rotate leadership abruptly.",
+    explanation: "If labor and consumer data soften together, the tape could rotate harder toward defensives and duration hedges.",
   },
 ];

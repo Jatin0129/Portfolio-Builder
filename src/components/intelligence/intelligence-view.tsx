@@ -21,6 +21,13 @@ function severityVariant(severity: string) {
 
 export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot }) {
   const [selected, setSelected] = useState<TradeIdea | null>(null);
+  const [scannerFilter, setScannerFilter] = useState<"ALL" | "LEADERS" | "HEDGES" | "REJECTS">("ALL");
+  const filteredAssets = snapshot.rankedAssets.filter((asset) => {
+    if (scannerFilter === "ALL") return true;
+    if (scannerFilter === "LEADERS") return asset.opportunityScore >= 75;
+    if (scannerFilter === "HEDGES") return asset.allocationBucket === "hedge";
+    return asset.riskVerdict.decision === "REJECT";
+  });
 
   return (
     <div className="space-y-6">
@@ -193,13 +200,28 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                 <CardTitle>Ranked asset scanner</CardTitle>
                 <CardDescription>Top opportunity scores across the current universe.</CardDescription>
               </div>
-              <ScanSearch className="h-4 w-4 text-primary" />
+              <div className="flex flex-wrap gap-2">
+                {(["ALL", "LEADERS", "HEDGES", "REJECTS"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
+                      scannerFilter === filter
+                        ? "border-primary/40 bg-primary/10 text-foreground"
+                        : "border-white/10 bg-white/5 text-muted-foreground"
+                    }`}
+                    onClick={() => setScannerFilter(filter)}
+                    type="button"
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
-              {snapshot.rankedAssets.map((asset, index) => (
+              {filteredAssets.map((asset, index) => (
                 <button
                   key={asset.ticker}
-                  className="w-full rounded-2xl border border-white/8 bg-white/4 p-4 text-left transition hover:border-primary/40 hover:bg-white/6"
+                  className="w-full rounded-[24px] border border-white/10 bg-white/4 p-5 text-left transition hover:border-primary/35 hover:bg-white/6"
                   onClick={() => setSelected(asset)}
                   type="button"
                 >
@@ -219,7 +241,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Opportunity</p>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-3 rounded-[20px] border border-white/10 bg-[#0d1624] p-4 sm:grid-cols-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Macro fit</p>
                       <p className="mt-1 font-medium">{asset.macroFit}</p>
@@ -247,7 +269,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
             </CardHeader>
             <CardContent>
               {snapshot.catalysts.map((catalyst) => (
-                <div key={catalyst.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
+                <div key={catalyst.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{catalyst.asset}</p>

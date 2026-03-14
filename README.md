@@ -1,113 +1,186 @@
 # CycleOS
 
-CycleOS is a production-style investment intelligence app for a Dubai-based retail swing investor. It converts macro data, geopolitical context, factor signals, technical confirmation, portfolio fit, and risk controls into ranked and explainable trade ideas.
+CycleOS is a premium institutional-style investment dashboard for a single-user swing-investing workflow. It combines macro regime context, geopolitical overlays, factor scoring, portfolio risk, journal review, and structured AI workflow placeholders into one dark, decision-oriented operating surface.
 
-## Folder structure
+## Project purpose
+
+CycleOS is designed to answer one question repeatedly and clearly:
+
+Which ideas deserve capital right now, at what size, under what macro regime, and with what behavioral discipline?
+
+The app is mock-data first, but the architecture is built so live market, news, macro, portfolio, and AI integrations can replace the mock providers later without rewriting page components.
+
+## Architecture overview
 
 ```text
 src/
-  app/                Next.js App Router pages and route-level layout
-  components/         Reusable UI, page views, charts, and layout building blocks
-  engines/            Pure business logic grouped by domain
-    ai-agents/
-    factor-scoring/
-    geopolitics/
-    macro/
-    market-data/
-    portfolio/
-    regime/
-    risk/
-  lib/                Shared framework utilities such as Prisma and generic helpers
-  mock-data/          Sample domain datasets and seed-friendly mock inputs
-    ai-agents/
-    factor-scoring/
-    geopolitics/
-    journal/
-    macro/
-    market-data/
-    portfolio/
-    regime/
-    risk/
-  services/           Application orchestration layer that composes engines into page-ready snapshots
-  types/              Shared TypeScript interfaces and domain models
-prisma/               Database schema and seed script
+  app/                 Next.js App Router pages and API routes
+  components/          Shared UI primitives, charts, layout, and page views
+  engines/             Pure scoring and decision logic
+  lib/                 Framework and route utilities
+  mock-data/           Deterministic demo datasets and seed-friendly records
+  providers/           Typed provider interfaces plus mock/persistence implementations
+  schemas/             Zod request/response validation for APIs and workflows
+  services/            App orchestration, settings, journal, and snapshot builders
+  test/                Shared test fixtures
+  types/               Shared domain models and view-model contracts
+prisma/
+  schema.prisma        Database schema
+  seed.ts              Prisma seed entrypoint
 ```
 
-## What each major folder does
+### Layer responsibilities
 
-- `src/app`: Defines the four core pages: Dashboard, Intelligence, Portfolio & Risk, and Journal & Review.
-- `src/components`: Holds reusable presentation components, including charts, UI primitives, and page-level views.
-- `src/engines`: Contains the rule-based and scoring logic. Each domain is isolated so live APIs can be plugged in later without tangling UI code.
-- `src/mock-data`: Stores sample mock data files for every major domain so the app can run before real integrations exist.
-- `src/services`: Builds dashboard snapshots, trade packets, portfolio summaries, and review data by composing engines and mock inputs.
-- `src/types`: Central place for the shared interfaces used across UI, engines, services, and Prisma seed helpers.
-- `src/lib`: Keeps small shared utilities and infrastructure helpers that are not domain-specific.
-- `prisma`: Defines persistence models and the seed entrypoint for PostgreSQL.
+- `components` render the UI only.
+- `services` assemble page-ready snapshots and workflow actions.
+- `engines` handle rule-based logic such as regime, scoring, and risk.
+- `providers` abstract data access so mock and future live integrations are swappable.
+- `mock-data` owns the deterministic scenario data that powers the demo and seeds.
 
-## Domain coverage
+## Page overview
 
-- `market-data`: Market summary and asset universe inputs
-- `macro`: Macro calendar, sector heatmap, and catalysts
-- `geopolitics`: Geopolitical severity events and implications
-- `regime`: Rule-based market regime classification
-- `factor-scoring`: Weighted opportunity score and factor breakdown
-- `portfolio`: Holdings, allocation, concentration, and correlation logic
-- `risk`: Trade approval, risk caps, and portfolio risk snapshot logic
-- `ai-agents`: Structured JSON agent outputs for news, macro/geopolitics, opportunity, and risk
+- `/`
+  - Command-center dashboard with regime context, alerts, top ideas, and portfolio overview.
+- `/intelligence`
+  - Macro calendar, geopolitical board, catalyst tracker, and ranked scanner.
+- `/portfolio-risk`
+  - Holdings, exposures, allocation posture, concentration warnings, and watchlist.
+- `/journal-review`
+  - Trade log, analytics, behavioral review, and entry/exit logging workflows.
+- `/settings`
+  - Capital, risk, alert thresholds, asset-universe preferences, and operating profile.
 
-## Types included
+## Engine overview
 
-The shared models under `src/types` include interfaces for:
+- `market-data`
+  - Enriches the asset universe with macro and geopolitical fit.
+- `macro`
+  - Builds macro summaries, calendar view models, catalyst views, and macro fit scoring.
+- `geopolitics`
+  - Builds the geopolitical board and geopolitical fit scoring.
+- `regime`
+  - Converts cross-asset state into a regime snapshot and regime fit.
+- `factor-scoring`
+  - Computes weighted factor breakdowns and opportunity scores.
+- `portfolio`
+  - Normalizes holdings, exposures, allocation targets, and concentration maps.
+- `risk`
+  - Applies risk controls and trade approval logic from the active settings profile.
+- `trade-ideas`
+  - Combines enriched assets, regime, settings, and holdings into ranked trade ideas.
+- `ai-agents`
+  - Provides structured JSON placeholders for News, Macro/Geopolitics, Opportunity, and Risk Officer agents.
 
-- assets
-- portfolio holdings
-- trade ideas
-- macro events
-- geopolitical events
-- regime output
-- factor breakdown
-- risk verdict
+## Mock data and providers
 
-## Setup
+CycleOS uses deterministic mock providers by default.
 
-1. Install dependencies:
+- Mock providers live under `src/providers/mock`.
+- Persistence-backed settings and journal providers live under `src/providers/persistence`.
+- `src/providers/index.ts` exposes the provider bundle used by app services.
+- Engines no longer import `mock-data` directly; providers are the boundary.
+
+### What the mock scenario includes
+
+- 25 sample assets across US stocks, ETFs, gold, energy, bond, and crypto proxy sleeves
+- macro event calendar and catalyst map
+- geopolitical event board
+- portfolio holdings and watchlist
+- journal history with open and closed trades
+- trade ideas generated from the same scenario data
+
+## Settings and database notes
+
+Prisma currently stores:
+
+- `UserSettings`
+- `JournalEntry`
+- seeded market-facing tables such as assets, holdings, watchlist items, macro events, and geopolitical events
+
+Settings are treated as a single-user record in this version. When the database is unavailable, the app falls back to the mock settings provider so the demo still renders.
+
+## Environment variables
+
+Use placeholders only; do not hardcode secrets.
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/cycleos"
+```
+
+Future live integrations will likely add placeholders such as:
+
+```env
+OPENAI_API_KEY=""
+MARKET_DATA_API_KEY=""
+NEWS_API_KEY=""
+MACRO_DATA_API_KEY=""
+BROKER_API_KEY=""
+```
+
+## Setup instructions
+
+1. Install dependencies
 
 ```bash
 npm install
 ```
 
-2. Copy environment variables:
+2. Create local environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-3. Generate the Prisma client:
+3. Generate Prisma client
 
 ```bash
 npm run db:generate
 ```
 
-4. Push the schema to PostgreSQL:
+4. Push the schema to your database
 
 ```bash
 npm run db:push
 ```
 
-5. Seed the database:
+5. Seed the database
 
 ```bash
 npm run db:seed
 ```
 
-6. Start the app:
+## Development run steps
+
+Run the app:
 
 ```bash
 npm run dev
 ```
 
-## Notes
+Run tests:
 
-- The app currently runs from mock data but is structured for future API integrations.
-- Future live data hooks are marked inside the engine layer.
-- Portfolio reporting uses AED on the portfolio and risk surfaces.
+```bash
+npm test
+```
+
+Run a production build:
+
+```bash
+npm run build
+```
+
+## How mock data works
+
+- Mock datasets live under `src/mock-data`.
+- Mock providers expose those datasets through typed interfaces.
+- App services consume provider outputs and feed engines.
+- UI pages consume snapshot services rather than importing static files.
+- This keeps the demo consistent while preserving a clean path to live providers later.
+
+## Future live-integration roadmap
+
+1. Replace mock market and macro providers with live vendor adapters.
+2. Connect portfolio provider to a brokerage or custody feed.
+3. Persist journal actions fully in the database-backed workflow with auth.
+4. Add real AI summarization and recommendation calls behind the existing structured agent interfaces.
+5. Add monitoring and freshness metadata to provider responses so users can see data staleness directly in the UI.

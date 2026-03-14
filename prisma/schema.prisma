@@ -18,6 +18,12 @@ enum TradeStatus {
   WATCHLIST
 }
 
+enum SettingsProfile {
+  CONSERVATIVE
+  BALANCED
+  AGGRESSIVE
+}
+
 model Asset {
   id                String      @id @default(cuid())
   ticker            String      @unique
@@ -135,6 +141,7 @@ model JournalEntry {
   id                 String      @id @default(cuid())
   ticker             String
   setupName          String
+  setupTags          Json
   direction          TradeDirection
   status             TradeStatus
   openedAt           DateTime
@@ -142,10 +149,38 @@ model JournalEntry {
   entryPrice         Float
   exitPrice          Float?
   thesis             String
+  entryReasons       Json
+  exitReasons        Json
+  rulesFollowed      Boolean
+  plannedRiskPct     Float
+  plannedRiskAed     Float
+  realizedPnlPct     Float?
+  realizedPnlAed     Float?
   outcomeR           Float?
   disciplineScore    Int
   mistakeTag         String?
+  behaviorTags       Json
+  holdingHorizon     String
   reviewNotes        String
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model UserSettings {
+  id                        String          @id @default("default")
+  totalCapital              Float
+  reportingCurrency         String
+  cashAed                   Float
+  maxRiskPerTradePct        Float
+  maxPortfolioOpenRiskPct   Float
+  maxDrawdownThresholdPct   Float
+  maxSinglePositionPct      Float
+  maxSectorExposurePct      Float
+  maxCorrelationClusterPct  Float
+  preferredHoldingHorizon   String
+  preferredAssetUniverse    Json
+  alertThresholds           Json
+  profile                   SettingsProfile
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
 }

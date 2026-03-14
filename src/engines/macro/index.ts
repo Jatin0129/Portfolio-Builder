@@ -1,9 +1,9 @@
-import { catalysts, macroEvents, macroState, sectorHeatmap } from "@/mock-data";
 import { clamp } from "@/lib/utils";
 import type {
   AssetSignalSeed,
   CatalystItem,
   MacroCalendarViewModel,
+  MacroEvent,
   MacroFitScore,
   MacroState,
   MacroSummary,
@@ -15,15 +15,15 @@ function hasTheme(asset: AssetSignalSeed, pattern: string) {
   return asset.themes.some((theme) => theme.toLowerCase().includes(lowered));
 }
 
-export function getMacroEvents() {
-  return macroEvents;
+export function getMacroEvents(events: MacroEvent[]) {
+  return events;
 }
 
-export function getMacroState(): MacroState {
-  return macroState;
+export function getMacroState(state: MacroState): MacroState {
+  return state;
 }
 
-export function getMacroSummary(state: MacroState = macroState): MacroSummary {
+export function getMacroSummary(state: MacroState): MacroSummary {
   const tone = state.growthIndicators.score >= 50 && state.bondYields.score >= 50 ? "supportive" : "mixed";
   const cautiousTone =
     state.centralBankSignals.direction === "elevated" || state.recessionStress.score <= 40;
@@ -38,9 +38,10 @@ export function getMacroSummary(state: MacroState = macroState): MacroSummary {
 }
 
 export function getMacroCalendarViewModel(
-  state: MacroState = macroState,
+  events: MacroEvent[],
+  state: MacroState,
 ): MacroCalendarViewModel {
-  const items = [...macroEvents].sort((a, b) => {
+  const items = [...events].sort((a, b) => {
     if (a.date === b.date) return b.severityScore - a.severityScore;
     return a.date.localeCompare(b.date);
   });
@@ -64,18 +65,15 @@ export function getMacroCalendarViewModel(
   };
 }
 
-export function getCatalysts(): CatalystItem[] {
+export function getCatalysts(catalysts: CatalystItem[]): CatalystItem[] {
   return catalysts;
 }
 
-export function getSectorHeatmap(): SectorHeatmapItem[] {
+export function getSectorHeatmap(sectorHeatmap: SectorHeatmapItem[]): SectorHeatmapItem[] {
   return sectorHeatmap;
 }
 
-export function scoreAssetMacroFit(
-  asset: AssetSignalSeed,
-  state: MacroState = macroState,
-): MacroFitScore {
+export function scoreAssetMacroFit(asset: AssetSignalSeed, state: MacroState): MacroFitScore {
   let score = 55;
   const reasons: string[] = [];
 
@@ -84,7 +82,8 @@ export function scoreAssetMacroFit(
       hasTheme(asset, "ai") ||
       hasTheme(asset, "quality growth") ||
       asset.sector === "Software" ||
-      asset.sector === "Semiconductors"
+      asset.sector === "Semiconductors" ||
+      asset.sector === "Internet"
     ) {
       score += 9;
       reasons.push("Inflation cooling supports long-duration growth and valuation stability.");
@@ -97,7 +96,12 @@ export function scoreAssetMacroFit(
   }
 
   if (state.bondYields.direction === "rising") {
-    if (hasTheme(asset, "rate sensitive") || asset.sector === "Clean Energy" || asset.sector === "Autos") {
+    if (
+      hasTheme(asset, "rate sensitive") ||
+      asset.sector === "Clean Energy" ||
+      asset.sector === "Autos" ||
+      asset.sector === "Crypto Proxy"
+    ) {
       score -= 12;
       reasons.push("Yields rising pressure rate-sensitive growth and financing-heavy themes.");
     }
@@ -109,12 +113,12 @@ export function scoreAssetMacroFit(
   }
 
   if (state.growthIndicators.direction === "weakening") {
-    if (hasTheme(asset, "global cyclicals") || asset.sector === "Industrials") {
+    if (hasTheme(asset, "global cyclicals") || asset.sector === "Industrials" || asset.sector === "Small Caps") {
       score -= 6;
       reasons.push("Growth weakening argues for more selectivity in cyclical participation.");
     }
 
-    if (hasTheme(asset, "defensive") || asset.sector === "Precious Metals") {
+    if (hasTheme(asset, "defensive") || asset.sector === "Precious Metals" || asset.sector === "Health Care") {
       score += 8;
       reasons.push("Growth weakening lifts the value of defensive and hedge exposures.");
     }
@@ -131,7 +135,7 @@ export function scoreAssetMacroFit(
   }
 
   if (state.usdEnvironment.direction === "easing") {
-    if (asset.region !== "United States" || hasTheme(asset, "global cyclicals")) {
+    if (asset.region !== "United States" || hasTheme(asset, "global cyclicals") || asset.sector === "Energy Proxy") {
       score += 5;
       reasons.push("A softer USD supports global liquidity and non-US or cyclical breadth.");
     }

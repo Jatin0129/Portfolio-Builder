@@ -1,4 +1,3 @@
-import { holdings, riskSettings } from "@/mock-data";
 import {
   invokeMacroGeopoliticsAgent,
   invokeNewsAgent,
@@ -6,15 +5,17 @@ import {
   invokeRiskOfficerAgent,
 } from "@/services/agents";
 import type {
+  Holding,
   MacroAgentPayload,
   NewsAgentPayload,
   OpportunityAgentPayload,
+  RiskSettings,
   RiskOfficerPayload,
   StructuredAgentResponse,
   TradeIdea,
 } from "@/types";
 
-function buildSectorExposureMap() {
+function buildSectorExposureMap(holdings: Holding[]) {
   return holdings.reduce<Record<string, number>>((accumulator, holding) => {
     accumulator[holding.sector] = Number(
       ((accumulator[holding.sector] ?? 0) + holding.weightPct).toFixed(1),
@@ -23,7 +24,7 @@ function buildSectorExposureMap() {
   }, {});
 }
 
-function buildThemeExposureMap() {
+function buildThemeExposureMap(holdings: Holding[]) {
   return holdings.reduce<Record<string, number>>((accumulator, holding) => {
     for (const theme of holding.themes) {
       accumulator[theme] = Number(((accumulator[theme] ?? 0) + holding.weightPct).toFixed(1));
@@ -193,7 +194,23 @@ export function runOpportunityAgent(
 
 export function runRiskOfficerAgent(
   trade: TradeIdea,
+  options?: { holdings: Holding[]; settings: RiskSettings },
 ): StructuredAgentResponse<RiskOfficerPayload> {
+  if (!options) {
+    return {
+      agent: "Risk Officer Agent",
+      asOf: new Date("2026-03-14T09:00:00Z").toISOString(),
+      status: trade.riskVerdict.decision === "REJECT" ? "watch" : "ok",
+      payload: {
+        ticker: trade.ticker,
+        decision: trade.riskVerdict.decision,
+        reasons: trade.riskVerdict.messages,
+        approvedRiskAed: trade.riskVerdict.approvedRiskAed,
+      },
+    };
+  }
+
+  const { holdings, settings } = options;
   const response = invokeRiskOfficerAgent({
     proposedTrades: [
       {
@@ -203,7 +220,7 @@ export function runRiskOfficerAgent(
         stop: buildTradeStop(trade),
         target: trade.direction === "LONG" ? trade.technicalSetup.resistance : trade.technicalSetup.support,
         riskPct: Number(
-          ((trade.riskVerdict.approvedRiskAed / riskSettings.portfolioValueAed) * 100).toFixed(2),
+          ((trade.riskVerdict.approvedRiskAed / settings.totalCapital) * 100).toFixed(2),
         ),
         sector: trade.sector,
         themes: trade.themes,
@@ -213,17 +230,17 @@ export function runRiskOfficerAgent(
     portfolioSnapshot: {
       openRiskPct: Number(
         ((holdings.reduce((sum, holding) => sum + holding.openRiskAed, 0) /
-          riskSettings.portfolioValueAed) *
+          settings.totalCapital) *
           100).toFixed(2),
       ),
-      sectorExposurePct: buildSectorExposureMap(),
-      themeExposurePct: buildThemeExposureMap(),
+      sectorExposurePct: buildSectorExposureMap(holdings),
+      themeExposurePct: buildThemeExposureMap(holdings),
     },
     limits: {
-      maxRiskPerTradePct: riskSettings.maxRiskPerTradePct,
-      maxPortfolioOpenRiskPct: riskSettings.maxPortfolioOpenRiskPct,
-      maxSectorExposurePct: riskSettings.maxSectorExposurePct,
-      maxThemeExposurePct: riskSettings.maxCorrelationClusterPct,
+      maxRiskPerTradePct: settings.maxRiskPerTradePct,
+      maxPortfolioOpenRiskPct: settings.maxPortfolioOpenRiskPct,
+      maxSectorExposurePct: settings.maxSectorExposurePct,
+      maxThemeExposurePct: settings.maxCorrelationClusterPct,
     },
   });
   const approvedTrade = response.data.approvedTrades.find((item) => item.ticker === trade.ticker);
@@ -240,7 +257,7 @@ export function runRiskOfficerAgent(
       decision: approvedTrade ? "APPROVE" : reducedTrade ? "REDUCE" : "REJECT",
       reasons: decisionItem ? decisionItem.reasonCodes.map(mapReasonCode) : trade.riskVerdict.messages,
       approvedRiskAed: decisionItem?.recommendedRiskPct
-        ? Number(((decisionItem.recommendedRiskPct / 100) * riskSettings.portfolioValueAed).toFixed(0))
+        ? Number(((decisionItem.recommendedRiskPct / 100) * settings.totalCapital).toFixed(0))
         : 0,
     },
   };

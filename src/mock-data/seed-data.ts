@@ -1,10 +1,23 @@
 import { Prisma } from "@prisma/client";
-import { getAssetUniverse, getGeopoliticalBoard, getMacroEvents } from "@/engines";
-import { holdings, journalEntries, watchlist } from "@/mock-data";
 
-const seededAssets = getAssetUniverse();
-const geopoliticalBoard = getGeopoliticalBoard();
-const seededMacroEvents = getMacroEvents();
+import {
+  getAssetUniverse,
+  getGeopoliticalBoard,
+  getMacroEvents,
+  getMacroState,
+} from "@/engines";
+import { cycleOsProviders } from "@/providers";
+import { journalEntries } from "@/mock-data/journal";
+import { holdings, watchlist } from "@/mock-data/portfolio";
+
+const seededMacroState = getMacroState(cycleOsProviders.macroData.getMacroState());
+const seededMacroEvents = getMacroEvents(cycleOsProviders.macroData.getMacroEvents());
+const seededGeopoliticalBoard = getGeopoliticalBoard(cycleOsProviders.geopolitics.getGeopoliticalEvents());
+const seededAssets = getAssetUniverse(
+  cycleOsProviders.marketData.getAssetUniverseSeeds(),
+  seededMacroState,
+  seededGeopoliticalBoard,
+);
 
 function toJson(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -94,7 +107,7 @@ export const seedMacroEvents = seededMacroEvents.map((event) => ({
   explanation: event.explanation,
 }));
 
-export const seedGeopoliticalEvents = geopoliticalBoard.events.map((event) => ({
+export const seedGeopoliticalEvents = seededGeopoliticalBoard.events.map((event) => ({
   title: event.title,
   category: event.category,
   region: event.region,
@@ -113,6 +126,7 @@ export const seedGeopoliticalEvents = geopoliticalBoard.events.map((event) => ({
 export const seedJournalEntries = journalEntries.map((entry) => ({
   ticker: entry.ticker,
   setupName: entry.setupName,
+  setupTags: toJson(entry.setupTags),
   direction: entry.direction,
   status: entry.status,
   openedAt: new Date(entry.openedAt),
@@ -120,8 +134,17 @@ export const seedJournalEntries = journalEntries.map((entry) => ({
   entryPrice: entry.entryPrice,
   exitPrice: entry.exitPrice,
   thesis: entry.thesis,
+  entryReasons: toJson(entry.entryReasons),
+  exitReasons: toJson(entry.exitReasons),
+  rulesFollowed: entry.rulesFollowed,
+  plannedRiskPct: entry.plannedRiskPct,
+  plannedRiskAed: entry.plannedRiskAed,
+  realizedPnlPct: entry.realizedPnlPct,
+  realizedPnlAed: entry.realizedPnlAed,
   outcomeR: entry.outcomeR,
   disciplineScore: entry.disciplineScore,
   mistakeTag: entry.mistakeTag,
+  behaviorTags: toJson(entry.behaviorTags),
+  holdingHorizon: entry.holdingHorizon,
   reviewNotes: entry.reviewNotes,
 }));

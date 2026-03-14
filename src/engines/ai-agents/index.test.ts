@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { getAgentBundle } from "@/services/cycleos-service";
 
-test("getAgentBundle still returns four compatible agent responses", () => {
-  const bundle = getAgentBundle("NVDA");
+test("getAgentBundle still returns four compatible agent responses", async () => {
+  const bundle = await getAgentBundle("NVDA");
 
   assert.ok(bundle);
   assert.equal(bundle?.length, 4);

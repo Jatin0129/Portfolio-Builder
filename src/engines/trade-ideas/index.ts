@@ -1,15 +1,14 @@
-import { holdings, riskSettings } from "@/mock-data";
 import { clamp, formatCurrency } from "@/lib/utils";
 import { computeOpportunityScore } from "@/engines/factor-scoring";
-import { getGeopoliticalBoard } from "@/engines/geopolitics";
-import { getMacroSummary } from "@/engines/macro";
-import { getMarketSummary, getAssetUniverse } from "@/engines/market-data";
-import { scoreAssetRegimeFit, classifyRegime } from "@/engines/regime";
 import { evaluateTradeRisk } from "@/engines/risk";
+import { scoreAssetRegimeFit } from "@/engines/regime";
 import type {
+  AssetSignalInput,
   GeopoliticalBoard,
+  Holding,
+  MacroSummary,
+  MarketSummary,
   PortfolioFit,
-  RegimeInput,
   RegimeSnapshot,
   RiskSettings,
   TradeIdea,
@@ -19,79 +18,59 @@ import type {
 } from "@/types";
 
 function buildPortfolioFit(ticker: string): PortfolioFit {
-  if (ticker === "GLD") {
+  if (ticker === "GLD" || ticker === "TLT") {
     return {
       role: "Portfolio hedge and macro shock absorber",
-      diversificationImpact: "Reduces growth beta and cushions policy surprise risk.",
-      exposureOverlap: "Low overlap with existing cyclical exposures.",
+      diversificationImpact: "Reduces growth beta and cushions policy and geopolitical surprise risk.",
+      exposureOverlap: "Low overlap with existing cyclical and AI leadership sleeves.",
       allocationSuggestionPct: 6,
-      overlapWithCurrentPortfolio: "Low overlap with existing growth and cyclical sleeves.",
-      themeFit: "Fits the portfolio as a defensive macro hedge during event-heavy weeks.",
+      overlapWithCurrentPortfolio: "Low overlap with current growth leadership exposure.",
+      themeFit: "Fits the portfolio as a stabilizer during event-heavy weeks.",
       hedgeValue: "High hedge value if yields fall or geopolitical stress intensifies.",
     };
   }
 
-  if (ticker === "XLI") {
+  if (ticker === "XLI" || ticker === "CAT") {
     return {
       role: "Cyclical breadth expression",
       diversificationImpact: "Improves participation beyond mega-cap technology.",
-      exposureOverlap: "Moderate overlap with existing industrial ETF holding.",
+      exposureOverlap: "Moderate overlap with existing industrial and localization exposure.",
       allocationSuggestionPct: 5,
-      overlapWithCurrentPortfolio:
-        "Moderate overlap with current cyclical exposure through XLI and industrial beta.",
-      themeFit: "Strong theme fit while global cyclicals and infrastructure spending remain supportive.",
-      hedgeValue: "Low hedge value; this is a participation trade rather than a portfolio hedge.",
+      overlapWithCurrentPortfolio: "Moderate overlap with cyclical and reshoring themes already in the book.",
+      themeFit: "Strong fit while infrastructure and localization spending remain supportive.",
+      hedgeValue: "Low hedge value; this is a participation trade rather than a stabilizer.",
     };
   }
 
-  if (ticker === "SMCI") {
+  if (ticker === "IBIT" || ticker === "SMH" || ticker === "NVDA") {
     return {
       role: "High-beta tactical alpha sleeve",
-      diversificationImpact: "Adds upside if AI infrastructure extends, but raises cluster risk quickly.",
-      exposureOverlap: "Very high overlap with semicap and AI infrastructure leadership.",
+      diversificationImpact: "Adds upside when liquidity is supportive, but raises cluster risk quickly.",
+      exposureOverlap: "Very high overlap with AI infrastructure leadership.",
       allocationSuggestionPct: 2.5,
-      overlapWithCurrentPortfolio:
-        "High overlap with existing semiconductor and mega-cap tech concentration.",
-      themeFit: "Fits the AI infrastructure theme but only tactically due to risk quality concerns.",
+      overlapWithCurrentPortfolio: "High overlap with existing semiconductor and platform leadership exposure.",
+      themeFit: "Fits only tactically and should remain sized smaller than core holdings.",
       hedgeValue: "No hedge value; this increases directional and thematic beta.",
     };
   }
 
   return {
-    role: "High-conviction growth alpha sleeve",
-    diversificationImpact: "Adds return potential but increases cluster risk.",
-    exposureOverlap: "High overlap with current semicap and mega-cap tech leadership.",
+    role: "High-conviction core alpha sleeve",
+    diversificationImpact: "Adds return potential while keeping the book diversified across sectors and themes.",
+    exposureOverlap: "Manageable overlap with current leaders.",
     allocationSuggestionPct: 3.5,
-    overlapWithCurrentPortfolio: "High overlap with current growth leadership exposure.",
-    themeFit: "Theme fit is acceptable only if the risk-on regime remains intact.",
-    hedgeValue: "Minimal hedge value because this trade is a pure directional growth expression.",
+    overlapWithCurrentPortfolio: "Moderate overlap with existing leaders, but still diversifying at the single-name level.",
+    themeFit: "Theme fit is acceptable if the selective risk-on regime stays intact.",
+    hedgeValue: "Minimal hedge value because this is a directional participation trade.",
   };
 }
 
-function buildRegimeInput(geopoliticalBoard: GeopoliticalBoard): RegimeInput {
-  const market = getMarketSummary();
-  const breadthState =
-    market.breadthPct >= 58 ? "strong" : market.breadthPct >= 48 ? "mixed" : "weak";
-
-  return {
-    majorIndexTrend: market.majorIndexTrend,
-    bondYieldDirection: market.bondYieldDirection,
-    goldBehavior: market.goldBehavior,
-    oilBehavior: market.oilBehavior,
-    usdTrend: market.usdTrend,
-    volatilityState: market.volatilityState,
-    marketBreadth: breadthState,
-    macroEventFlags: market.macroEventFlags,
-    geopoliticalSeverity: geopoliticalBoard.summary.overlaySeverity,
-  };
-}
-
-function buildTradeIdeaGenerationContext(): TradeIdeaGenerationContext {
-  const marketSummary = getMarketSummary();
-  const geopoliticalBoard = getGeopoliticalBoard();
-  const macroSummary = getMacroSummary();
-  const regime = classifyRegime(buildRegimeInput(geopoliticalBoard));
-
+function buildTradeIdeaGenerationContext(
+  marketSummary: MarketSummary,
+  macroSummary: MacroSummary,
+  geopoliticalBoard: GeopoliticalBoard,
+  regime: RegimeSnapshot,
+): TradeIdeaGenerationContext {
   return {
     marketSummary,
     macroSummary,
@@ -135,11 +114,11 @@ function buildPositionSize(
     return "0% of portfolio (rejected)";
   }
 
-  const allocationCapAed = settings.portfolioValueAed * (allocationSuggestionPct / 100);
+  const allocationCapAed = settings.totalCapital * (allocationSuggestionPct / 100);
   const sizedAed = Math.min(allocationCapAed, maxPositionAed);
-  const sizedPct = Number(((sizedAed / settings.portfolioValueAed) * 100).toFixed(1));
+  const sizedPct = Number(((sizedAed / settings.totalCapital) * 100).toFixed(1));
 
-  return `${sizedPct}% of portfolio (${formatCurrency(sizedAed)})`;
+  return `${sizedPct}% of portfolio (${formatCurrency(sizedAed, settings.reportingCurrency)})`;
 }
 
 function buildThesis(shortThesis: string, regimeReasons: string[], regimeFitText: string) {
@@ -168,14 +147,27 @@ export function toTradeIdeaSummaries(ideas: TradeIdea[]): TradeIdeaRankedSummary
   }));
 }
 
-export function generateTradeIdeas(): TradeIdeaGeneratorResult {
-  const context = buildTradeIdeaGenerationContext();
+export function generateTradeIdeas(input: {
+  assets: AssetSignalInput[];
+  holdings: Holding[];
+  settings: RiskSettings;
+  marketSummary: MarketSummary;
+  macroSummary: MacroSummary;
+  geopoliticalBoard: GeopoliticalBoard;
+  regime: RegimeSnapshot;
+}): TradeIdeaGeneratorResult {
+  const context = buildTradeIdeaGenerationContext(
+    input.marketSummary,
+    input.macroSummary,
+    input.geopoliticalBoard,
+    input.regime,
+  );
 
-  const ideas = getAssetUniverse()
+  const ideas = input.assets
     .map((asset) => {
       const factorResult = computeOpportunityScore(asset);
       const portfolioFit = buildPortfolioFit(asset.ticker);
-      const regimeFit = scoreAssetRegimeFit(asset, context.regime, context.geopoliticalBoard);
+      const regimeFit = scoreAssetRegimeFit(asset, input.regime, input.geopoliticalBoard);
       const totalScore = buildTotalScore(factorResult.score, regimeFit.score);
 
       const baseTrade = {
@@ -198,18 +190,18 @@ export function generateTradeIdeas(): TradeIdeaGeneratorResult {
         portfolioFit,
       };
 
-      const riskVerdict = evaluateTradeRisk(baseTrade, holdings, riskSettings);
+      const riskVerdict = evaluateTradeRisk(baseTrade, input.holdings, input.settings);
       const confidence = buildFinalConfidence(
         totalScore,
         asset.conviction,
-        context.regime,
+        input.regime,
         riskVerdict.decision,
         asset.stopDistancePct,
       );
       const thesis = buildThesis(asset.shortThesis, regimeFit.reasons, asset.regimeFitText);
       const size = buildPositionSize(
         portfolioFit.allocationSuggestionPct,
-        riskSettings,
+        input.settings,
         riskVerdict.maxPositionAed,
         riskVerdict.decision,
       );
@@ -257,12 +249,4 @@ export function generateTradeIdeas(): TradeIdeaGeneratorResult {
     ideas,
     rankedSummaries: toTradeIdeaSummaries(ideas),
   };
-}
-
-export function getRankedTradeIdeaSummaries() {
-  return generateTradeIdeas().rankedSummaries;
-}
-
-export function getTradeIdeaGenerationContext() {
-  return buildTradeIdeaGenerationContext();
 }

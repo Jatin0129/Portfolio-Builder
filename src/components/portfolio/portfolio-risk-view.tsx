@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { AlertTriangle, ShieldAlert, Wallet } from "lucide-react";
 
 import { AllocationChart } from "@/components/charts/allocation-chart";
@@ -25,6 +28,11 @@ function statusVariant(status: string) {
 export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const { exposures, holdings, overUnderweights, risk, settings, suggestedAllocation, summary, watchlist } =
     snapshot;
+  const [holdingFilter, setHoldingFilter] = useState<"ALL" | "core" | "tactical" | "hedge">("ALL");
+  const filteredHoldings =
+    holdingFilter === "ALL"
+      ? holdings
+      : holdings.filter((holding) => holding.allocationBucket === holdingFilter);
 
   return (
     <div className="space-y-6">
@@ -99,11 +107,27 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
               <CardTitle>Holdings table</CardTitle>
               <CardDescription>Current positions with AED value, normalized weight, and theme tagging.</CardDescription>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {(["ALL", "core", "tactical", "hedge"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
+                    holdingFilter === filter
+                      ? "border-primary/40 bg-primary/10 text-foreground"
+                      : "border-white/10 bg-white/5 text-muted-foreground"
+                  }`}
+                  onClick={() => setHoldingFilter(filter)}
+                  type="button"
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent className="overflow-hidden">
-            <div className="overflow-x-auto rounded-2xl border border-white/8 bg-white/4">
+            <div className="overflow-x-auto rounded-[24px] border border-white/10 bg-white/4">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-white/8 bg-[#08111c] text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                <thead className="border-b border-white/8 bg-[#0c1522] text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">Asset</th>
                     <th className="px-4 py-3 font-medium">Bucket</th>
@@ -115,7 +139,7 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
                   </tr>
                 </thead>
                 <tbody>
-                  {holdings.map((holding) => (
+                  {filteredHoldings.map((holding) => (
                     <tr key={holding.id} className="border-b border-white/6 last:border-b-0">
                       <td className="px-4 py-4">
                         <div>
@@ -130,7 +154,15 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
                       <td className="px-4 py-4 text-foreground">{holding.weightPct}%</td>
                       <td className="px-4 py-4 text-foreground">{formatCurrency(holding.unrealizedPnlAed)}</td>
                       <td className="px-4 py-4 text-foreground">{formatCurrency(holding.openRiskAed)}</td>
-                      <td className="px-4 py-4 text-muted-foreground">{holding.themes.join(", ")}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {holding.themes.map((theme) => (
+                            <Badge key={theme} variant="neutral">
+                              {theme}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

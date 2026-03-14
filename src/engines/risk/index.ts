@@ -19,17 +19,17 @@ export function evaluateTradeRisk(
   settings: RiskSettings,
 ): RiskVerdict {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
-  const maxRiskAed = (settings.portfolioValueAed * settings.maxRiskPerTradePct) / 100;
+  const maxRiskAed = (settings.totalCapital * settings.maxRiskPerTradePct) / 100;
   const maxPositionAed = Number(
     Math.min(
-      settings.portfolioValueAed * (settings.maxSinglePositionPct / 100),
+      settings.totalCapital * (settings.maxSinglePositionPct / 100),
       maxRiskAed / (trade.stopDistancePct / 100),
     ).toFixed(0),
   );
 
   const currentOpenRiskAed = normalizedHoldings.reduce((sum, holding) => sum + holding.openRiskAed, 0);
   const projectedOpenRiskPct =
-    ((currentOpenRiskAed + maxRiskAed) / settings.portfolioValueAed) * 100;
+    ((currentOpenRiskAed + maxRiskAed) / settings.totalCapital) * 100;
 
   const sameSectorExposure = normalizedHoldings
     .filter((holding) => holding.sector === trade.sector)
@@ -121,6 +121,6 @@ export function buildPortfolioRiskSnapshot(
     correlationClusters,
     suggestions,
     totalOpenRiskAed,
-    totalOpenRiskPct: Number(((totalOpenRiskAed / settings.portfolioValueAed) * 100).toFixed(1)),
+    totalOpenRiskPct: Number(((totalOpenRiskAed / settings.totalCapital) * 100).toFixed(1)),
   };
 }

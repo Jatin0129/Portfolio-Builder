@@ -1,4 +1,3 @@
-import { geopoliticalEvents } from "@/mock-data";
 import { clamp } from "@/lib/utils";
 import type {
   AssetSignalSeed,
@@ -46,13 +45,15 @@ function matchesKeyword(tokens: string[], keyword: string) {
   return tokens.some((token) => token.includes(lowered) || lowered.includes(token));
 }
 
-export function getGeopoliticalBoard(): GeopoliticalBoard {
-  const events = [...geopoliticalEvents].sort((a, b) => b.severityScore - a.severityScore);
+export function getGeopoliticalBoard(events: GeopoliticalEvent[]): GeopoliticalBoard {
+  const orderedEvents = [...events].sort((a, b) => b.severityScore - a.severityScore);
   const overlayScore = Math.round(
-    events.reduce((sum, event) => sum + event.severityScore, 0) / events.length,
+    orderedEvents.reduce((sum, event) => sum + event.severityScore, 0) / orderedEvents.length,
   );
   const dominantChannels = Array.from(
-    new Set(events.flatMap((event) => event.transmissionChannels.map((channel) => channel.channel))),
+    new Set(
+      orderedEvents.flatMap((event) => event.transmissionChannels.map((channel) => channel.channel)),
+    ),
   )
     .slice(0, 4)
     .map((channel) => channelLabels[channel] ?? channel);
@@ -63,25 +64,25 @@ export function getGeopoliticalBoard(): GeopoliticalBoard {
       headline: "Shipping, conflict, and policy shocks keep the geopolitical overlay firmly active.",
       overlaySeverity: toSeverity(overlayScore),
       overlayScore,
-      activeCount: events.length,
+      activeCount: orderedEvents.length,
       posture:
         overlayScore >= 80
           ? "Geopolitical risk is high enough to justify explicit hedges and smaller tactical sizing."
           : "Geopolitical risk is elevated but still tradable with selectivity.",
       dominantChannels,
-      actionBias: events.slice(0, 3).map((event) => `${event.actionSuggestion}: ${event.title}`),
+      actionBias: orderedEvents.slice(0, 3).map((event) => `${event.actionSuggestion}: ${event.title}`),
     },
-    events,
+    events: orderedEvents,
   };
 }
 
-export function getGeopoliticalEvents(): GeopoliticalEvent[] {
-  return getGeopoliticalBoard().events;
+export function getGeopoliticalEvents(board: GeopoliticalBoard): GeopoliticalEvent[] {
+  return board.events;
 }
 
 export function scoreAssetGeopoliticalFit(
   asset: AssetSignalSeed,
-  board: GeopoliticalBoard = getGeopoliticalBoard(),
+  board: GeopoliticalBoard,
 ): GeopoliticalFitScore {
   const tokens = assetTokens(asset);
   let score = 55;

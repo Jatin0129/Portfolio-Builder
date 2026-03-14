@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient, SettingsProfile } from "@prisma/client";
 import {
   seedAssets,
   seedGeopoliticalEvents,
@@ -7,6 +7,7 @@ import {
   seedMacroEvents,
   seedWatchlistItems,
 } from "../src/mock-data/seed-data";
+import { defaultUserSettings } from "../src/mock-data/risk";
 
 const prisma = new PrismaClient();
 
@@ -61,6 +62,40 @@ async function main() {
   await prisma.journalEntry.createMany({
     data: seedJournalEntries,
     skipDuplicates: true,
+  });
+  await prisma.userSettings.upsert({
+    where: { id: "default" },
+    update: {
+      totalCapital: defaultUserSettings.totalCapital,
+      reportingCurrency: defaultUserSettings.reportingCurrency,
+      cashAed: defaultUserSettings.cashAed,
+      maxRiskPerTradePct: defaultUserSettings.maxRiskPerTradePct,
+      maxPortfolioOpenRiskPct: defaultUserSettings.maxPortfolioOpenRiskPct,
+      maxDrawdownThresholdPct: defaultUserSettings.maxDrawdownThresholdPct,
+      maxSinglePositionPct: defaultUserSettings.maxSinglePositionPct,
+      maxSectorExposurePct: defaultUserSettings.maxSectorExposurePct,
+      maxCorrelationClusterPct: defaultUserSettings.maxCorrelationClusterPct,
+      preferredHoldingHorizon: defaultUserSettings.preferredHoldingHorizon,
+      preferredAssetUniverse: toJson(defaultUserSettings.preferredAssetUniverse),
+      alertThresholds: toJson(defaultUserSettings.alertThresholds),
+      profile: defaultUserSettings.profile.toUpperCase() as SettingsProfile,
+    },
+    create: {
+      id: "default",
+      totalCapital: defaultUserSettings.totalCapital,
+      reportingCurrency: defaultUserSettings.reportingCurrency,
+      cashAed: defaultUserSettings.cashAed,
+      maxRiskPerTradePct: defaultUserSettings.maxRiskPerTradePct,
+      maxPortfolioOpenRiskPct: defaultUserSettings.maxPortfolioOpenRiskPct,
+      maxDrawdownThresholdPct: defaultUserSettings.maxDrawdownThresholdPct,
+      maxSinglePositionPct: defaultUserSettings.maxSinglePositionPct,
+      maxSectorExposurePct: defaultUserSettings.maxSectorExposurePct,
+      maxCorrelationClusterPct: defaultUserSettings.maxCorrelationClusterPct,
+      preferredHoldingHorizon: defaultUserSettings.preferredHoldingHorizon,
+      preferredAssetUniverse: toJson(defaultUserSettings.preferredAssetUniverse),
+      alertThresholds: toJson(defaultUserSettings.alertThresholds),
+      profile: defaultUserSettings.profile.toUpperCase() as SettingsProfile,
+    },
   });
 }
 

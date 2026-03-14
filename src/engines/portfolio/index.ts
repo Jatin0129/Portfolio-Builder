@@ -80,7 +80,7 @@ export function normalizeHoldings(
 ): Holding[] {
   return holdings.map((holding) => ({
     ...holding,
-    weightPct: calculateWeightPct(holding.marketValueAed, settings.portfolioValueAed),
+    weightPct: calculateWeightPct(holding.marketValueAed, settings.totalCapital),
   }));
 }
 
@@ -107,18 +107,18 @@ export function buildPortfolioSummary(
   const topHolding = [...normalizedHoldings].sort((a, b) => b.weightPct - a.weightPct)[0];
 
   return {
-    portfolioValueAed: settings.portfolioValueAed,
+    portfolioValueAed: settings.totalCapital,
     investedAed,
     cashAed: settings.cashAed,
     dailyPnlAed: round(dailyPnlAed),
     openRiskAed,
-    openRiskPct: round((openRiskAed / settings.portfolioValueAed) * 100),
+    openRiskPct: round((openRiskAed / settings.totalCapital) * 100),
     topExposure: `${topHolding.ticker} at ${topHolding.weightPct.toFixed(1)}%`,
     allocationMix: [
-      { name: "Core", value: calculateWeightPct(bucketMap.Core, settings.portfolioValueAed) },
-      { name: "Tactical", value: calculateWeightPct(bucketMap.Tactical, settings.portfolioValueAed) },
-      { name: "Hedge", value: calculateWeightPct(bucketMap.Hedge, settings.portfolioValueAed) },
-      { name: "Cash", value: calculateWeightPct(settings.cashAed, settings.portfolioValueAed) },
+      { name: "Core", value: calculateWeightPct(bucketMap.Core, settings.totalCapital) },
+      { name: "Tactical", value: calculateWeightPct(bucketMap.Tactical, settings.totalCapital) },
+      { name: "Hedge", value: calculateWeightPct(bucketMap.Hedge, settings.totalCapital) },
+      { name: "Cash", value: calculateWeightPct(settings.cashAed, settings.totalCapital) },
     ],
   };
 }
@@ -130,7 +130,7 @@ export function buildConcentrationChecks(
   const normalizedHoldings = normalizeHoldings(holdings, settings);
   const sectorExposure = buildExposureBreakdown(
     normalizedHoldings.map((holding) => ({ label: holding.sector, valueAed: holding.marketValueAed })),
-    settings.portfolioValueAed,
+    settings.totalCapital,
   );
   const largestPosition = [...normalizedHoldings].sort((a, b) => b.weightPct - a.weightPct)[0];
 
@@ -230,24 +230,24 @@ export function buildPortfolioExposures(
   return {
     sector: buildExposureBreakdown(
       normalizedHoldings.map((holding) => ({ label: holding.sector, valueAed: holding.marketValueAed })),
-      settings.portfolioValueAed,
+      settings.totalCapital,
     ),
     theme: buildExposureBreakdown(
       normalizedHoldings.flatMap((holding) =>
         holding.themes.map((theme) => ({ label: theme, valueAed: holding.marketValueAed / holding.themes.length })),
       ),
-      settings.portfolioValueAed,
+      settings.totalCapital,
     ),
     assetClass: buildExposureBreakdown(
       [
         ...normalizedHoldings.map((holding) => ({ label: holding.assetClass, valueAed: holding.marketValueAed })),
         { label: "Cash", valueAed: settings.cashAed },
       ],
-      settings.portfolioValueAed,
+      settings.totalCapital,
     ),
     region: buildExposureBreakdown(
       normalizedHoldings.map((holding) => ({ label: holding.region, valueAed: holding.marketValueAed })),
-      settings.portfolioValueAed,
+      settings.totalCapital,
     ),
   };
 }
@@ -264,7 +264,7 @@ export function buildSuggestedAllocationView(
     core: 0,
     tactical: 0,
     hedge: 0,
-    cash: calculateWeightPct(settings.cashAed, settings.portfolioValueAed),
+    cash: calculateWeightPct(settings.cashAed, settings.totalCapital),
   };
 
   for (const holding of normalizedHoldings) {
