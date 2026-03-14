@@ -37,3 +37,27 @@ export interface LiveMarketRsi {
 export interface LiveMarketWatchlistItem extends PortfolioWatchlistItem {
   quote: LiveMarketQuote;
 }
+
+export type MarketFeedCategory = "benchmarks" | "holdings" | "watchlist" | "universe";
+
+export interface MarketFeedInstrument {
+  id: string;
+  symbol: string;
+  name: string;
+  context: MarketFeedCategory;
+  assetClass?: string;
+  sector?: string;
+  region?: string;
+  priority?: string;
+  allocationBucket?: string;
+  targetEntry?: string;
+  thesis?: string;
+  themes: string[];
+  quote: LiveMarketQuote;
+}
+
+export interface MarketFeedSnapshot {
+  defaultCategory: MarketFeedCategory;
+  selectedSymbol: string;
+  sections: Record<MarketFeedCategory, MarketFeedInstrument[]>;
+}

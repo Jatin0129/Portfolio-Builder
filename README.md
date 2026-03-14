@@ -41,6 +41,8 @@ prisma/
 
 - `/`
   - Command-center dashboard with regime context, alerts, top ideas, and portfolio overview.
+- `/market-feed`
+  - Live market feed for tracked benchmarks, holdings, watchlist names, and the wider universe with symbol drilldown.
 - `/intelligence`
   - Macro calendar, geopolitical board, catalyst tracker, and ranked scanner.
 - `/portfolio-risk`
@@ -195,6 +197,7 @@ npm run build
   - `GET /api/market/candles?symbol=MSFT`
   - `GET /api/market/rsi?symbol=MSFT&interval=daily&timePeriod=14`
   - `GET /api/market/watchlist?limit=5`
+  - `GET /api/market/watchlist?category=holdings&symbols=MSFT,NVDA&limit=2`
 - `.env.local`, `.next`, and `node_modules` should remain uncommitted. They are already ignored by Git in this project.
 
 ## Future live-integration roadmap

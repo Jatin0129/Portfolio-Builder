@@ -9,6 +9,7 @@ import {
   BookOpenText,
   BriefcaseBusiness,
   LayoutGrid,
+  LineChart,
   Radar,
   Settings2,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
+  { href: "/market-feed", label: "Market Feed", icon: LineChart },
   { href: "/intelligence", label: "Intelligence", icon: Radar },
   { href: "/portfolio-risk", label: "Portfolio & Risk", icon: BriefcaseBusiness },
   { href: "/journal-review", label: "Journal & Review", icon: BookOpenText },

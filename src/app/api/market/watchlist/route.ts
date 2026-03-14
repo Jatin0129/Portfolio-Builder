@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { buildMockQuote, buildMockWatchlistQuotes, getGlobalQuote } from "@/lib/providers/alphaVantage";
-import { cycleOsProviders } from "@/providers";
+import { getTrackedMarketInstruments } from "@/services/market-feed-service";
+import type { MarketFeedCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,24 +10,26 @@ export const runtime = "nodejs";
 function parseLimit(value: string | null) {
   const parsed = Number(value ?? "5");
   if (!Number.isFinite(parsed)) return 5;
-  return Math.max(1, Math.min(8, Math.trunc(parsed)));
+  return Math.max(1, Math.min(25, Math.trunc(parsed)));
+}
+
+function parseCategory(value: string | null): MarketFeedCategory {
+  return value === "benchmarks" || value === "holdings" || value === "universe" ? value : "watchlist";
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limit = parseLimit(searchParams.get("limit"));
+  const category = parseCategory(searchParams.get("category"));
   const symbols = searchParams
     .get("symbols")
     ?.split(",")
     .map((symbol) => symbol.trim().toUpperCase())
     .filter(Boolean);
 
-  const watchlist = cycleOsProviders.portfolio
-    .getWatchlist()
-    .filter((item) => (symbols?.length ? symbols.includes(item.ticker) : true))
-    .slice(0, limit);
+  const trackedItems = getTrackedMarketInstruments(category, symbols, limit);
 
-  if (!watchlist.length) {
+  if (!trackedItems.length) {
     return NextResponse.json({
       items: buildMockWatchlistQuotes(limit),
       source: "mock",
@@ -34,9 +37,9 @@ export async function GET(request: Request) {
   }
 
   const items = await Promise.all(
-    watchlist.map(async (item) => {
+    trackedItems.map(async (item) => {
       try {
-        const quote = await getGlobalQuote(item.ticker);
+        const quote = await getGlobalQuote(item.symbol);
         return {
           ...item,
           quote,
@@ -44,7 +47,7 @@ export async function GET(request: Request) {
       } catch {
         return {
           ...item,
-          quote: buildMockQuote(item.ticker),
+          quote: buildMockQuote(item.symbol),
         };
       }
     }),
