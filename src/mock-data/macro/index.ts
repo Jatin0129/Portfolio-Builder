@@ -143,7 +143,7 @@ export const macroEvents: MacroEvent[] = [
     consensus: "Stable demand",
     implication: "A weak auction would pressure valuations and make duration hedges more valuable.",
     watchFor: "Tail size and indirect bids",
-    explanation: "Bond market tone is a key underappreciated swing factor for this dashboard’s leadership map.",
+    explanation: "Bond market tone is a key underappreciated swing factor for this dashboard's leadership map.",
   },
   {
     id: "macro-7",

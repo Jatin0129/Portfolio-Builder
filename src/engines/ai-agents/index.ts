@@ -9,10 +9,10 @@ import type {
   MacroAgentPayload,
   NewsAgentPayload,
   OpportunityAgentPayload,
-  RiskSettings,
   RiskOfficerPayload,
   StructuredAgentResponse,
   TradeIdea,
+  UserSettings,
 } from "@/types";
 
 function buildSectorExposureMap(holdings: Holding[]) {
@@ -194,7 +194,7 @@ export function runOpportunityAgent(
 
 export function runRiskOfficerAgent(
   trade: TradeIdea,
-  options?: { holdings: Holding[]; settings: RiskSettings },
+  options?: { holdings: Holding[]; settings: UserSettings },
 ): StructuredAgentResponse<RiskOfficerPayload> {
   if (!options) {
     return {

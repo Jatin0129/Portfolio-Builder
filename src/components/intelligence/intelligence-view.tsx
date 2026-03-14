@@ -7,8 +7,10 @@ import { TradeInsightDrawer } from "@/components/trade-insight/trade-insight-dra
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PanelList } from "@/components/ui/panel-list";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import { formatPercent } from "@/lib/utils";
 import type { IntelligenceSnapshot, TradeIdea } from "@/types";
 
@@ -200,22 +202,16 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                 <CardTitle>Ranked asset scanner</CardTitle>
                 <CardDescription>Top opportunity scores across the current universe.</CardDescription>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {(["ALL", "LEADERS", "HEDGES", "REJECTS"] as const).map((filter) => (
-                  <button
-                    key={filter}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
-                      scannerFilter === filter
-                        ? "border-primary/40 bg-primary/10 text-foreground"
-                        : "border-white/10 bg-white/5 text-muted-foreground"
-                    }`}
-                    onClick={() => setScannerFilter(filter)}
-                    type="button"
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
+              <SegmentedFilter
+                onChange={setScannerFilter}
+                options={[
+                  { label: "ALL", value: "ALL" },
+                  { label: "LEADERS", value: "LEADERS" },
+                  { label: "HEDGES", value: "HEDGES" },
+                  { label: "REJECTS", value: "REJECTS" },
+                ]}
+                value={scannerFilter}
+              />
             </CardHeader>
             <CardContent>
               {filteredAssets.map((asset, index) => (
@@ -268,7 +264,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
               </div>
             </CardHeader>
             <CardContent>
-              {snapshot.catalysts.map((catalyst) => (
+              <PanelList items={snapshot.catalysts} renderItem={(catalyst) => (
                 <div key={catalyst.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -279,7 +275,7 @@ export function IntelligenceView({ snapshot }: { snapshot: IntelligenceSnapshot 
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{catalyst.impact}</p>
                 </div>
-              ))}
+              )} />
             </CardContent>
           </Card>
         </div>

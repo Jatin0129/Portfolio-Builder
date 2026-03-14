@@ -6,7 +6,7 @@ import type {
   JournalEntry,
   JournalEntryInput,
   JournalExitInput,
-  RiskSettings,
+  UserSettings,
 } from "@/types";
 
 function round(value: number, digits = 1) {
@@ -83,7 +83,7 @@ export function buildJournalAnalytics(entries: JournalEntry[]): JournalAnalytics
 
 export function buildBehavioralReview(
   entries: JournalEntry[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): BehavioralReviewSnapshot {
   const oversizedTrades = entries
     .filter(

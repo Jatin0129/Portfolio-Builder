@@ -6,11 +6,15 @@ import { AlertTriangle, ShieldAlert, Wallet } from "lucide-react";
 import { AllocationChart } from "@/components/charts/allocation-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartPanel } from "@/components/ui/chart-panel";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PanelList } from "@/components/ui/panel-list";
 import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import { formatCurrency } from "@/lib/utils";
-import type { PortfolioSnapshot } from "@/types";
+import type { Holding, PortfolioSnapshot } from "@/types";
 
 function actionVariant(action: string) {
   if (action === "Trim") return "warning" as const;
@@ -33,6 +37,56 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
     holdingFilter === "ALL"
       ? holdings
       : holdings.filter((holding) => holding.allocationBucket === holdingFilter);
+  const holdingColumns: DataTableColumn<Holding>[] = [
+    {
+      key: "asset",
+      header: "Asset",
+      render: (holding) => (
+        <div>
+          <p className="font-medium text-foreground">{holding.ticker}</p>
+          <p className="text-xs text-muted-foreground">{holding.name}</p>
+        </div>
+      ),
+    },
+    {
+      key: "bucket",
+      header: "Bucket",
+      render: (holding) => <Badge variant="neutral">{holding.allocationBucket}</Badge>,
+    },
+    {
+      key: "value",
+      header: "Value",
+      render: (holding) => formatCurrency(holding.marketValueAed),
+    },
+    {
+      key: "weight",
+      header: "Weight",
+      render: (holding) => `${holding.weightPct}%`,
+    },
+    {
+      key: "pnl",
+      header: "PnL",
+      render: (holding) => formatCurrency(holding.unrealizedPnlAed),
+    },
+    {
+      key: "open-risk",
+      header: "Open risk",
+      render: (holding) => formatCurrency(holding.openRiskAed),
+    },
+    {
+      key: "themes",
+      header: "Themes",
+      render: (holding) => (
+        <div className="flex flex-wrap gap-2">
+          {holding.themes.map((theme) => (
+            <Badge key={theme} variant="neutral">
+              {theme}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -74,7 +128,12 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <AllocationChart data={summary.allocationMix} />
+            <ChartPanel
+              description="Current book structure plus the suggested allocation mix."
+              title="Allocation mix"
+            >
+              <AllocationChart data={summary.allocationMix} />
+            </ChartPanel>
             <div className="grid gap-3 sm:grid-cols-2">
               {suggestedAllocation.buckets.map((bucket) => (
                 <div key={bucket.key} className="rounded-2xl border border-white/8 bg-white/4 p-4">
@@ -107,67 +166,19 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
               <CardTitle>Holdings table</CardTitle>
               <CardDescription>Current positions with AED value, normalized weight, and theme tagging.</CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(["ALL", "core", "tactical", "hedge"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
-                    holdingFilter === filter
-                      ? "border-primary/40 bg-primary/10 text-foreground"
-                      : "border-white/10 bg-white/5 text-muted-foreground"
-                  }`}
-                  onClick={() => setHoldingFilter(filter)}
-                  type="button"
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
+            <SegmentedFilter
+              onChange={setHoldingFilter}
+              options={[
+                { label: "ALL", value: "ALL" },
+                { label: "CORE", value: "core" },
+                { label: "TACTICAL", value: "tactical" },
+                { label: "HEDGE", value: "hedge" },
+              ]}
+              value={holdingFilter}
+            />
           </CardHeader>
           <CardContent className="overflow-hidden">
-            <div className="overflow-x-auto rounded-[24px] border border-white/10 bg-white/4">
-              <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-white/8 bg-[#0c1522] text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Asset</th>
-                    <th className="px-4 py-3 font-medium">Bucket</th>
-                    <th className="px-4 py-3 font-medium">Value</th>
-                    <th className="px-4 py-3 font-medium">Weight</th>
-                    <th className="px-4 py-3 font-medium">PnL</th>
-                    <th className="px-4 py-3 font-medium">Open risk</th>
-                    <th className="px-4 py-3 font-medium">Themes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredHoldings.map((holding) => (
-                    <tr key={holding.id} className="border-b border-white/6 last:border-b-0">
-                      <td className="px-4 py-4">
-                        <div>
-                          <p className="font-medium text-foreground">{holding.ticker}</p>
-                          <p className="text-xs text-muted-foreground">{holding.name}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Badge variant="neutral">{holding.allocationBucket}</Badge>
-                      </td>
-                      <td className="px-4 py-4 text-foreground">{formatCurrency(holding.marketValueAed)}</td>
-                      <td className="px-4 py-4 text-foreground">{holding.weightPct}%</td>
-                      <td className="px-4 py-4 text-foreground">{formatCurrency(holding.unrealizedPnlAed)}</td>
-                      <td className="px-4 py-4 text-foreground">{formatCurrency(holding.openRiskAed)}</td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          {holding.themes.map((theme) => (
-                            <Badge key={theme} variant="neutral">
-                              {theme}
-                            </Badge>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable columns={holdingColumns} getRowKey={(holding) => holding.id} rows={filteredHoldings} />
           </CardContent>
         </Card>
       </div>
@@ -244,7 +255,7 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {watchlist.map((item) => (
+              <PanelList items={watchlist} renderItem={(item) => (
                 <div key={item.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -263,7 +274,7 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
                     Entry: {item.targetEntry} | Suggested size: {item.candidateAllocationPct}%
                   </p>
                 </div>
-              ))}
+              )} />
             </CardContent>
           </Card>
         </div>

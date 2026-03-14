@@ -16,7 +16,6 @@ import type {
   PortfolioWatchlistItem,
   RiskItem,
   RiskOfficerPayload,
-  RiskSettings,
   SectorHeatmapItem,
   StructuredAgentResponse,
   TradeIdea,

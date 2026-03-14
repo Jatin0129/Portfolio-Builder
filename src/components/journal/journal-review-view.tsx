@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardList, Plus, Sparkles, Target } from "lucide-react";
@@ -8,15 +9,206 @@ import { DisciplineChart } from "@/components/charts/discipline-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartPanel } from "@/components/ui/chart-panel";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Field, FieldGroup, fieldControlClassName } from "@/components/ui/field";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Modal } from "@/components/ui/modal";
+import { PanelList } from "@/components/ui/panel-list";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import type { JournalEntry, JournalEntryInput, JournalExitInput, ReviewSnapshot } from "@/types";
 
 function statusVariant(status: JournalEntry["status"]) {
   if (status === "OPEN") return "warning";
   if (status === "CLOSED") return "success";
   return "neutral";
+}
+
+function BehaviorPanel({
+  title,
+  count,
+  variant,
+  items,
+}: {
+  title: string;
+  count: number;
+  variant: "warning" | "info" | "danger" | "neutral";
+  items: Array<{ id?: string; label: string }>;
+}) {
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-medium">{title}</p>
+        <Badge variant={variant}>{count}</Badge>
+      </div>
+      <PanelList
+        className="mt-3"
+        emptyState="No issues flagged in the current review window."
+        items={items}
+        renderItem={(item, index) => (
+          <p key={item.id ?? `${title}-${index}`} className="text-sm text-muted-foreground">
+            {item.label}
+          </p>
+        )}
+      />
+    </div>
+  );
+}
+
+function JournalEntryForm({
+  entryForm,
+  setEntryForm,
+  onCancel,
+  onSubmit,
+  isPending,
+}: {
+  entryForm: JournalEntryInput;
+  setEntryForm: Dispatch<SetStateAction<JournalEntryInput>>;
+  onCancel: () => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isPending: boolean;
+}) {
+  return (
+    <form className="space-y-4" onSubmit={onSubmit}>
+      <FieldGroup>
+        <Field label="Ticker">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setEntryForm((current) => ({ ...current, ticker: event.target.value }))}
+            value={entryForm.ticker}
+          />
+        </Field>
+        <Field label="Setup">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setEntryForm((current) => ({ ...current, setupName: event.target.value }))}
+            value={entryForm.setupName}
+          />
+        </Field>
+        <Field className="md:col-span-2" label="Thesis">
+          <textarea
+            className={`${fieldControlClassName} min-h-[110px]`}
+            onChange={(event) => setEntryForm((current) => ({ ...current, thesis: event.target.value }))}
+            value={entryForm.thesis}
+          />
+        </Field>
+        <Field label="Entry price">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setEntryForm((current) => ({ ...current, entryPrice: Number(event.target.value) }))}
+            type="number"
+            value={entryForm.entryPrice}
+          />
+        </Field>
+        <Field label="Planned risk %">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setEntryForm((current) => ({ ...current, plannedRiskPct: Number(event.target.value) }))}
+            step="0.1"
+            type="number"
+            value={entryForm.plannedRiskPct}
+          />
+        </Field>
+        <Field className="md:col-span-2" label="Setup tags">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) =>
+              setEntryForm((current) => ({
+                ...current,
+                setupTags: event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+              }))
+            }
+            value={entryForm.setupTags.join(", ")}
+          />
+        </Field>
+        <Field className="md:col-span-2" label="Entry reasons">
+          <textarea
+            className={`${fieldControlClassName} min-h-[100px]`}
+            onChange={(event) =>
+              setEntryForm((current) => ({
+                ...current,
+                entryReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
+              }))
+            }
+            value={entryForm.entryReasons.join("\n")}
+          />
+        </Field>
+      </FieldGroup>
+      <div className="flex items-center justify-end gap-3">
+        <Button onClick={onCancel} type="button" variant="ghost">
+          Cancel
+        </Button>
+        <Button disabled={isPending} type="submit">
+          {isPending ? "Saving..." : "Create entry"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function JournalExitForm({
+  exitForm,
+  setExitForm,
+  onCancel,
+  onSubmit,
+  isPending,
+}: {
+  exitForm: Omit<JournalExitInput, "id">;
+  setExitForm: Dispatch<SetStateAction<Omit<JournalExitInput, "id">>>;
+  onCancel: () => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isPending: boolean;
+}) {
+  return (
+    <form className="space-y-4" onSubmit={onSubmit}>
+      <FieldGroup>
+        <Field label="Exit price">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setExitForm((current) => ({ ...current, exitPrice: Number(event.target.value) }))}
+            type="number"
+            value={exitForm.exitPrice}
+          />
+        </Field>
+        <Field label="Closed at">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) => setExitForm((current) => ({ ...current, closedAt: event.target.value }))}
+            type="datetime-local"
+            value={exitForm.closedAt.slice(0, 16)}
+          />
+        </Field>
+        <Field className="md:col-span-2" label="Exit reasons">
+          <textarea
+            className={`${fieldControlClassName} min-h-[100px]`}
+            onChange={(event) =>
+              setExitForm((current) => ({
+                ...current,
+                exitReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
+              }))
+            }
+            value={exitForm.exitReasons.join("\n")}
+          />
+        </Field>
+        <Field className="md:col-span-2" label="Review notes">
+          <textarea
+            className={`${fieldControlClassName} min-h-[110px]`}
+            onChange={(event) => setExitForm((current) => ({ ...current, reviewNotes: event.target.value }))}
+            value={exitForm.reviewNotes}
+          />
+        </Field>
+      </FieldGroup>
+      <div className="flex items-center justify-end gap-3">
+        <Button onClick={onCancel} type="button" variant="ghost">
+          Cancel
+        </Button>
+        <Button disabled={isPending} type="submit">
+          {isPending ? "Closing..." : "Close trade"}
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
@@ -55,6 +247,95 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
   }, [snapshot.entries, statusFilter]);
 
   const openEntries = snapshot.entries.filter((entry) => entry.status === "OPEN");
+
+  const tradeLogColumns: DataTableColumn<JournalEntry>[] = [
+    {
+      key: "trade",
+      header: "Trade",
+      render: (entry) => (
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{entry.ticker}</p>
+            <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{entry.openedAt.slice(0, 10)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "setup",
+      header: "Setup",
+      render: (entry) => (
+        <div>
+          <p className="font-medium">{entry.setupName}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {entry.setupTags.map((tag) => (
+              <Badge key={tag} variant="neutral">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "risk",
+      header: "Risk",
+      render: (entry) => (
+        <p className="text-muted-foreground">
+          {entry.plannedRiskPct}% / AED {entry.plannedRiskAed.toLocaleString("en-AE")}
+        </p>
+      ),
+    },
+    {
+      key: "outcome",
+      header: "Outcome",
+      render: (entry) => (
+        <div>
+          <p className="font-medium">{entry.outcomeR !== undefined ? `${entry.outcomeR}R` : "Open"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {entry.realizedPnlPct !== undefined ? `${entry.realizedPnlPct}%` : "Awaiting exit"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "behavior",
+      header: "Behavior",
+      render: (entry) => (
+        <div className="flex flex-wrap gap-2">
+          {entry.behaviorTags.map((tag) => (
+            <Badge key={tag} variant={tag === "followed-plan" ? "success" : "warning"}>
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "action",
+      header: "Action",
+      render: (entry) =>
+        entry.status === "OPEN" ? (
+          <Button
+            onClick={() => {
+              setSelectedExit(entry);
+              setExitForm((current) => ({
+                ...current,
+                exitPrice: entry.entryPrice,
+                closedAt: new Date().toISOString(),
+              }));
+            }}
+            type="button"
+            variant="secondary"
+          >
+            Close trade
+          </Button>
+        ) : (
+          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reviewed</span>
+        ),
+    },
+  ];
 
   async function handleCreateEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,18 +384,43 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard icon={<Target className="h-4 w-4 text-primary" />} label="Win rate" value={`${snapshot.analytics.winRate}%`} hint="Closed trade quality" />
-        <MetricCard icon={<Sparkles className="h-4 w-4 text-cyan-300" />} label="Avg gain" value={`${snapshot.analytics.averageGain}%`} hint="Winning trades" />
-        <MetricCard icon={<AlertTriangle className="h-4 w-4 text-rose-300" />} label="Avg loss" value={`${snapshot.analytics.averageLoss}%`} hint="Losing trades" />
-        <MetricCard icon={<ClipboardList className="h-4 w-4 text-amber-300" />} label="Expectancy" value={`${snapshot.analytics.expectancy}R`} hint="Expected edge per trade" />
-        <MetricCard icon={<Sparkles className="h-4 w-4 text-emerald-300" />} label="Open trades" value={openEntries.length} hint="Needs active management" />
+        <MetricCard
+          hint="Closed trade quality"
+          icon={<Target className="h-4 w-4 text-primary" />}
+          label="Win rate"
+          value={`${snapshot.analytics.winRate}%`}
+        />
+        <MetricCard
+          hint="Winning trades"
+          icon={<Sparkles className="h-4 w-4 text-cyan-300" />}
+          label="Avg gain"
+          value={`${snapshot.analytics.averageGain}%`}
+        />
+        <MetricCard
+          hint="Losing trades"
+          icon={<AlertTriangle className="h-4 w-4 text-rose-300" />}
+          label="Avg loss"
+          value={`${snapshot.analytics.averageLoss}%`}
+        />
+        <MetricCard
+          hint="Expected edge per trade"
+          icon={<ClipboardList className="h-4 w-4 text-amber-300" />}
+          label="Expectancy"
+          value={`${snapshot.analytics.expectancy}R`}
+        />
+        <MetricCard
+          hint="Needs active management"
+          icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
+          label="Open trades"
+          value={openEntries.length}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Setup analytics</CardTitle>
+              <CardTitle>Journal analytics</CardTitle>
               <CardDescription>Performance quality by outcome, discipline, and repeatable setup behavior.</CardDescription>
             </div>
           </CardHeader>
@@ -137,8 +443,13 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
                 <p className="mt-2 text-xl font-semibold">{snapshot.analytics.disciplineAverage}/10</p>
               </div>
             </div>
-            <div className="mt-5 rounded-[24px] border border-white/10 bg-white/4 p-4">
-              <DisciplineChart data={snapshot.analytics.curve} />
+            <div className="mt-5">
+              <ChartPanel
+                description="Average discipline score by month across closed trades."
+                title="Discipline curve"
+              >
+                <DisciplineChart data={snapshot.analytics.curve} />
+              </ChartPanel>
             </div>
           </CardContent>
         </Card>
@@ -151,58 +462,41 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
             </div>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">Oversized trades</p>
-                <Badge variant="warning">{snapshot.behavior.oversizedTrades.length}</Badge>
-              </div>
-              <div className="mt-3 space-y-2">
-                {snapshot.behavior.oversizedTrades.slice(0, 3).map((item) => (
-                  <p key={item.id} className="text-sm text-muted-foreground">
-                    {item.ticker}: {item.detail}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">Early exits</p>
-                <Badge variant="info">{snapshot.behavior.earlyExits.length}</Badge>
-              </div>
-              <div className="mt-3 space-y-2">
-                {snapshot.behavior.earlyExits.slice(0, 3).map((item) => (
-                  <p key={item.id} className="text-sm text-muted-foreground">
-                    {item.ticker}: {item.detail}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">Missed stops</p>
-                <Badge variant="danger">{snapshot.behavior.missedStops.length}</Badge>
-              </div>
-              <div className="mt-3 space-y-2">
-                {snapshot.behavior.missedStops.slice(0, 3).map((item) => (
-                  <p key={item.id} className="text-sm text-muted-foreground">
-                    {item.ticker}: {item.detail}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">Overtrading patterns</p>
-                <Badge variant="neutral">{snapshot.behavior.overtradingPatterns.length}</Badge>
-              </div>
-              <div className="mt-3 space-y-2">
-                {snapshot.behavior.overtradingPatterns.map((pattern) => (
-                  <p key={pattern.date} className="text-sm text-muted-foreground">
-                    {pattern.date}: {pattern.note}
-                  </p>
-                ))}
-              </div>
-            </div>
+            <BehaviorPanel
+              count={snapshot.behavior.oversizedTrades.length}
+              items={snapshot.behavior.oversizedTrades.slice(0, 3).map((item) => ({
+                id: item.id,
+                label: `${item.ticker}: ${item.detail}`,
+              }))}
+              title="Oversized trades"
+              variant="warning"
+            />
+            <BehaviorPanel
+              count={snapshot.behavior.earlyExits.length}
+              items={snapshot.behavior.earlyExits.slice(0, 3).map((item) => ({
+                id: item.id,
+                label: `${item.ticker}: ${item.detail}`,
+              }))}
+              title="Early exits"
+              variant="info"
+            />
+            <BehaviorPanel
+              count={snapshot.behavior.missedStops.length}
+              items={snapshot.behavior.missedStops.slice(0, 3).map((item) => ({
+                id: item.id,
+                label: `${item.ticker}: ${item.detail}`,
+              }))}
+              title="Missed stops"
+              variant="danger"
+            />
+            <BehaviorPanel
+              count={snapshot.behavior.overtradingPatterns.length}
+              items={snapshot.behavior.overtradingPatterns.map((item) => ({
+                label: `${item.date}: ${item.note}`,
+              }))}
+              title="Overtrading patterns"
+              variant="neutral"
+            />
           </CardContent>
         </Card>
       </div>
@@ -213,101 +507,18 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
             <CardTitle>Trade log</CardTitle>
             <CardDescription>Filter the journal, review setup tags, and close open positions from the same table surface.</CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(["ALL", "OPEN", "CLOSED"] as const).map((option) => (
-              <button
-                key={option}
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  statusFilter === option
-                    ? "border-primary/40 bg-primary/10 text-foreground"
-                    : "border-white/10 bg-white/5 text-muted-foreground"
-                }`}
-                onClick={() => setStatusFilter(option)}
-                type="button"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          <SegmentedFilter
+            onChange={setStatusFilter}
+            options={[
+              { label: "ALL", value: "ALL" },
+              { label: "OPEN", value: "OPEN" },
+              { label: "CLOSED", value: "CLOSED" },
+            ]}
+            value={statusFilter}
+          />
         </CardHeader>
         <CardContent className="overflow-hidden">
-          <div className="overflow-x-auto rounded-[24px] border border-white/10 bg-white/4">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-white/8 bg-[#0c1522] text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Trade</th>
-                  <th className="px-4 py-3 font-medium">Setup</th>
-                  <th className="px-4 py-3 font-medium">Risk</th>
-                  <th className="px-4 py-3 font-medium">Outcome</th>
-                  <th className="px-4 py-3 font-medium">Behavior</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-white/6 align-top last:border-b-0">
-                    <td className="px-4 py-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{entry.ticker}</p>
-                          <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{entry.openedAt.slice(0, 10)}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="font-medium">{entry.setupName}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {entry.setupTags.map((tag) => (
-                          <Badge key={tag} variant="neutral">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-muted-foreground">
-                      {entry.plannedRiskPct}% / AED {entry.plannedRiskAed.toLocaleString("en-AE")}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="font-medium">{entry.outcomeR !== undefined ? `${entry.outcomeR}R` : "Open"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {entry.realizedPnlPct !== undefined ? `${entry.realizedPnlPct}%` : "Awaiting exit"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {entry.behaviorTags.map((tag) => (
-                          <Badge key={tag} variant={tag === "followed-plan" ? "success" : "warning"}>
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      {entry.status === "OPEN" ? (
-                        <Button
-                          onClick={() => {
-                            setSelectedExit(entry);
-                            setExitForm((current) => ({
-                              ...current,
-                              exitPrice: entry.entryPrice,
-                              closedAt: new Date().toISOString(),
-                            }));
-                          }}
-                          type="button"
-                          variant="secondary"
-                        >
-                          Close trade
-                        </Button>
-                      ) : (
-                        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reviewed</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={tradeLogColumns} getRowKey={(entry) => entry.id} rows={filteredEntries} />
         </CardContent>
       </Card>
 
@@ -343,44 +554,13 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
         open={showEntryModal}
         title="Log trade entry"
       >
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateEntry}>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ticker</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, ticker: event.target.value })} value={entryForm.ticker} />
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Setup</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, setupName: event.target.value })} value={entryForm.setupName} />
-          </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Thesis</span>
-            <textarea className="min-h-[110px] w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, thesis: event.target.value })} value={entryForm.thesis} />
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Entry price</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, entryPrice: Number(event.target.value) })} type="number" value={entryForm.entryPrice} />
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Planned risk %</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, plannedRiskPct: Number(event.target.value) })} step="0.1" type="number" value={entryForm.plannedRiskPct} />
-          </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Setup tags</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, setupTags: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} value={entryForm.setupTags.join(", ")} />
-          </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Entry reasons</span>
-            <textarea className="min-h-[100px] w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setEntryForm({ ...entryForm, entryReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} value={entryForm.entryReasons.join("\n")} />
-          </label>
-          <div className="md:col-span-2 flex items-center justify-end gap-3">
-            <Button onClick={() => setShowEntryModal(false)} type="button" variant="ghost">
-              Cancel
-            </Button>
-            <Button disabled={isPending} type="submit">
-              {isPending ? "Saving..." : "Create entry"}
-            </Button>
-          </div>
-        </form>
+        <JournalEntryForm
+          entryForm={entryForm}
+          isPending={isPending}
+          onCancel={() => setShowEntryModal(false)}
+          onSubmit={handleCreateEntry}
+          setEntryForm={setEntryForm}
+        />
       </Modal>
 
       <Modal
@@ -389,32 +569,13 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
         open={Boolean(selectedExit)}
         title={selectedExit ? `Close ${selectedExit.ticker}` : "Close trade"}
       >
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCloseTrade}>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Exit price</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setExitForm({ ...exitForm, exitPrice: Number(event.target.value) })} type="number" value={exitForm.exitPrice} />
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Closed at</span>
-            <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setExitForm({ ...exitForm, closedAt: event.target.value })} type="datetime-local" value={exitForm.closedAt.slice(0, 16)} />
-          </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Exit reasons</span>
-            <textarea className="min-h-[100px] w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setExitForm({ ...exitForm, exitReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} value={exitForm.exitReasons.join("\n")} />
-          </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Review notes</span>
-            <textarea className="min-h-[110px] w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm" onChange={(event) => setExitForm({ ...exitForm, reviewNotes: event.target.value })} value={exitForm.reviewNotes} />
-          </label>
-          <div className="md:col-span-2 flex items-center justify-end gap-3">
-            <Button onClick={() => setSelectedExit(null)} type="button" variant="ghost">
-              Cancel
-            </Button>
-            <Button disabled={isPending} type="submit">
-              {isPending ? "Closing..." : "Close trade"}
-            </Button>
-          </div>
-        </form>
+        <JournalExitForm
+          exitForm={exitForm}
+          isPending={isPending}
+          onCancel={() => setSelectedExit(null)}
+          onSubmit={handleCloseTrade}
+          setExitForm={setExitForm}
+        />
       </Modal>
     </div>
   );

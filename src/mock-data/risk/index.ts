@@ -1,4 +1,5 @@
-import type { DashboardAlert, RiskItem, RiskSettings, UserSettings } from "@/types";
+import { assetUniverseOptions } from "@/config/settings";
+import type { DashboardAlert, RiskItem, UserSettings } from "@/types";
 
 export const defaultUserSettings: UserSettings = {
   id: "default",
@@ -12,14 +13,7 @@ export const defaultUserSettings: UserSettings = {
   maxSectorExposurePct: 28,
   maxCorrelationClusterPct: 34,
   preferredHoldingHorizon: "swing",
-  preferredAssetUniverse: [
-    "US stocks",
-    "ETFs",
-    "gold proxy",
-    "energy proxy",
-    "bond proxy",
-    "crypto proxy",
-  ],
+  preferredAssetUniverse: assetUniverseOptions,
   alertThresholds: {
     openRiskPct: 4.8,
     singlePositionPct: 14,
@@ -29,7 +23,7 @@ export const defaultUserSettings: UserSettings = {
   profile: "balanced",
 };
 
-export const riskSettings: RiskSettings = {
+export const riskSettings: UserSettings = {
   ...defaultUserSettings,
 };
 

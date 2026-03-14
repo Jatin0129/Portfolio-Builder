@@ -9,44 +9,47 @@ import { prismaJournalProvider } from "@/providers/persistence/journal-provider"
 import { prismaSettingsProvider } from "@/providers/persistence/settings-provider";
 import type { CycleOsProviders, JournalProvider, SettingsProvider } from "@/providers/interfaces";
 
+async function withFallback<T>(primary: () => Promise<T>, fallback: () => Promise<T> | T) {
+  try {
+    return await primary();
+  } catch {
+    return await fallback();
+  }
+}
+
 const resilientSettingsProvider: SettingsProvider = {
   async getSettings() {
-    try {
-      return await prismaSettingsProvider.getSettings();
-    } catch {
-      return mockSettingsProvider.getSettings();
-    }
+    return withFallback(
+      () => prismaSettingsProvider.getSettings(),
+      () => mockSettingsProvider.getSettings(),
+    );
   },
   async saveSettings(settings) {
-    try {
-      return await prismaSettingsProvider.saveSettings(settings);
-    } catch {
-      return mockSettingsProvider.saveSettings(settings);
-    }
+    return withFallback(
+      () => prismaSettingsProvider.saveSettings(settings),
+      () => mockSettingsProvider.saveSettings(settings),
+    );
   },
 };
 
 const resilientJournalProvider: JournalProvider = {
   async getEntries() {
-    try {
-      return await prismaJournalProvider.getEntries();
-    } catch {
-      return mockJournalProvider.getEntries();
-    }
+    return withFallback(
+      () => prismaJournalProvider.getEntries(),
+      () => mockJournalProvider.getEntries(),
+    );
   },
   async createEntry(entry) {
-    try {
-      return await prismaJournalProvider.createEntry(entry);
-    } catch {
-      return mockJournalProvider.createEntry(entry);
-    }
+    return withFallback(
+      () => prismaJournalProvider.createEntry(entry),
+      () => mockJournalProvider.createEntry(entry),
+    );
   },
   async closeEntry(exit) {
-    try {
-      return await prismaJournalProvider.closeEntry(exit);
-    } catch {
-      return mockJournalProvider.closeEntry(exit);
-    }
+    return withFallback(
+      () => prismaJournalProvider.closeEntry(exit),
+      () => mockJournalProvider.closeEntry(exit),
+    );
   },
 };
 

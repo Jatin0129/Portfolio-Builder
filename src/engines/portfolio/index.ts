@@ -13,8 +13,8 @@ import type {
   PortfolioSummary,
   PortfolioWatchlistItem,
   RegimeSnapshot,
-  RiskSettings,
   SuggestedAllocationView,
+  UserSettings,
 } from "@/types";
 
 function round(value: number) {
@@ -76,7 +76,7 @@ function buildExposureBreakdown(
 
 export function normalizeHoldings(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): Holding[] {
   return holdings.map((holding) => ({
     ...holding,
@@ -86,7 +86,7 @@ export function normalizeHoldings(
 
 export function buildPortfolioSummary(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): PortfolioSummary {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
   const investedAed = sumBy(normalizedHoldings, (holding) => holding.marketValueAed);
@@ -125,7 +125,7 @@ export function buildPortfolioSummary(
 
 export function buildConcentrationChecks(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): ConcentrationItem[] {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
   const sectorExposure = buildExposureBreakdown(
@@ -162,7 +162,7 @@ export function buildConcentrationChecks(
 
 export function buildCorrelationClusters(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): CorrelationCluster[] {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
   const clusters = normalizedHoldings.reduce<Record<string, CorrelationCluster>>((accumulator, holding) => {
@@ -223,7 +223,7 @@ export function buildAllocationSuggestions(
 
 export function buildPortfolioExposures(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): PortfolioExposures {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
 
@@ -254,7 +254,7 @@ export function buildPortfolioExposures(
 
 export function buildSuggestedAllocationView(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
   regime: RegimeSnapshot,
   macroSummary: MacroSummary,
   geopoliticalBoard: GeopoliticalBoard,
@@ -411,7 +411,7 @@ export function buildOverUnderweights(
 export function buildPortfolioSnapshot(
   holdings: Holding[],
   watchlist: PortfolioWatchlistItem[],
-  settings: RiskSettings,
+  settings: UserSettings,
   regime: RegimeSnapshot,
   macroSummary: MacroSummary,
   geopoliticalBoard: GeopoliticalBoard,

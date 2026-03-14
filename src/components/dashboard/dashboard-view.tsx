@@ -15,8 +15,11 @@ import { MarketPulseChart } from "@/components/charts/market-pulse-chart";
 import { TradeInsightDrawer } from "@/components/trade-insight/trade-insight-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartPanel } from "@/components/ui/chart-panel";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PanelList } from "@/components/ui/panel-list";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import { formatCurrency } from "@/lib/utils";
 import type { DashboardSnapshot, TradeIdea } from "@/types";
 
@@ -113,9 +116,14 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                 ))}
               </div>
             </div>
-            <MarketPulseChart />
-          </CardContent>
-        </Card>
+              <ChartPanel
+                description="Cross-asset pulse across breadth, rates, gold, oil, and volatility."
+                title="Market pulse"
+              >
+                <MarketPulseChart />
+              </ChartPanel>
+            </CardContent>
+          </Card>
 
         <div className="space-y-4">
           <Card>
@@ -222,22 +230,16 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <CardTitle>Top trade ideas</CardTitle>
               <CardDescription>Ranked by opportunity score and filtered through portfolio rules.</CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(["ALL", "APPROVE", "REDUCE", "DEFENSIVE"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
-                    ideaFilter === filter
-                      ? "border-primary/40 bg-primary/10 text-foreground"
-                      : "border-white/10 bg-white/5 text-muted-foreground"
-                  }`}
-                  onClick={() => setIdeaFilter(filter)}
-                  type="button"
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
+            <SegmentedFilter
+              onChange={setIdeaFilter}
+              options={[
+                { label: "ALL", value: "ALL" },
+                { label: "APPROVE", value: "APPROVE" },
+                { label: "REDUCE", value: "REDUCE" },
+                { label: "DEFENSIVE", value: "DEFENSIVE" },
+              ]}
+              value={ideaFilter}
+            />
           </CardHeader>
           <CardContent className="space-y-3">
             {filteredIdeas.map((trade) => (
@@ -289,12 +291,12 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <Siren className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              {snapshot.alerts.map((alert) => (
+              <PanelList items={snapshot.alerts} renderItem={(alert) => (
                 <div key={alert.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <p className="font-medium">{alert.title}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{alert.message}</p>
                 </div>
-              ))}
+              )} />
             </CardContent>
           </Card>
 
@@ -307,7 +309,7 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <AlertTriangle className="h-4 w-4 text-danger" />
             </CardHeader>
             <CardContent>
-              {snapshot.topRisks.map((risk) => (
+              <PanelList items={snapshot.topRisks} renderItem={(risk) => (
                 <div key={risk.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{risk.title}</p>
@@ -325,7 +327,7 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{risk.explanation}</p>
                 </div>
-              ))}
+              )} />
             </CardContent>
           </Card>
         </div>

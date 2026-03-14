@@ -8,15 +8,15 @@ import type {
   Holding,
   PortfolioRiskSnapshot,
   RiskDecision,
-  RiskSettings,
   RiskVerdict,
   TradeIdea,
+  UserSettings,
 } from "@/types";
 
 export function evaluateTradeRisk(
   trade: Omit<TradeIdea, "riskVerdict" | "insight">,
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): RiskVerdict {
   const normalizedHoldings = normalizeHoldings(holdings, settings);
   const maxRiskAed = (settings.totalCapital * settings.maxRiskPerTradePct) / 100;
@@ -108,7 +108,7 @@ export function evaluateTradeRisk(
 
 export function buildPortfolioRiskSnapshot(
   holdings: Holding[],
-  settings: RiskSettings,
+  settings: UserSettings,
 ): PortfolioRiskSnapshot {
   const concentrationChecks = buildConcentrationChecks(holdings, settings);
   const correlationClusters = buildCorrelationClusters(holdings, settings);

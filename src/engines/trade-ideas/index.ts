@@ -10,11 +10,11 @@ import type {
   MarketSummary,
   PortfolioFit,
   RegimeSnapshot,
-  RiskSettings,
   TradeIdea,
   TradeIdeaGenerationContext,
   TradeIdeaGeneratorResult,
   TradeIdeaRankedSummary,
+  UserSettings,
 } from "@/types";
 
 function buildPortfolioFit(ticker: string): PortfolioFit {
@@ -106,7 +106,7 @@ function buildFinalConfidence(
 
 function buildPositionSize(
   allocationSuggestionPct: number,
-  settings: RiskSettings,
+  settings: UserSettings,
   maxPositionAed: number,
   decision: TradeIdea["riskVerdict"]["decision"],
 ) {
@@ -150,7 +150,7 @@ export function toTradeIdeaSummaries(ideas: TradeIdea[]): TradeIdeaRankedSummary
 export function generateTradeIdeas(input: {
   assets: AssetSignalInput[];
   holdings: Holding[];
-  settings: RiskSettings;
+  settings: UserSettings;
   marketSummary: MarketSummary;
   macroSummary: MacroSummary;
   geopoliticalBoard: GeopoliticalBoard;

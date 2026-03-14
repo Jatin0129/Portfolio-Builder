@@ -135,7 +135,7 @@ export const assetUniverse: AssetSignalSeed[] = [
     conviction: 90,
     shortThesis: "The cleanest high-conviction leadership name while AI capex remains a top market narrative.",
     pattern: "High-tight flag",
-    catalystWindow: "this week’s cloud commentary",
+    catalystWindow: "this week's cloud commentary",
   }),
   buildAsset({
     ticker: "AMZN",
@@ -459,7 +459,7 @@ export const assetUniverse: AssetSignalSeed[] = [
     conviction: 81,
     shortThesis: "A diversified cyclical breadth expression with cleaner valuation and risk than crowded single-name growth.",
     pattern: "Ascending base",
-    catalystWindow: "this month’s PMI and capex data",
+    catalystWindow: "this month's PMI and capex data",
   }),
   buildAsset({
     ticker: "XLE",

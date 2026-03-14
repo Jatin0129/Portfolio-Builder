@@ -1,60 +1,175 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { BellRing, BriefcaseBusiness, ShieldCheck } from "lucide-react";
 
+import { assetUniverseOptions, settingsProfilePresets } from "@/config/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup, fieldControlClassName } from "@/components/ui/field";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { cn } from "@/lib/utils";
 import type { AssetUniversePreference, SettingsSnapshot, UserSettings } from "@/types";
 
-const profilePresets = {
-  conservative: {
-    maxRiskPerTradePct: 0.7,
-    maxPortfolioOpenRiskPct: 4,
-    maxDrawdownThresholdPct: 7,
-    maxSinglePositionPct: 12,
-    maxSectorExposurePct: 22,
-    maxCorrelationClusterPct: 28,
-  },
-  balanced: {
-    maxRiskPerTradePct: 1,
-    maxPortfolioOpenRiskPct: 5.5,
-    maxDrawdownThresholdPct: 10,
-    maxSinglePositionPct: 16,
-    maxSectorExposurePct: 28,
-    maxCorrelationClusterPct: 34,
-  },
-  aggressive: {
-    maxRiskPerTradePct: 1.4,
-    maxPortfolioOpenRiskPct: 7,
-    maxDrawdownThresholdPct: 13,
-    maxSinglePositionPct: 20,
-    maxSectorExposurePct: 34,
-    maxCorrelationClusterPct: 42,
-  },
-} satisfies Record<
-  UserSettings["profile"],
-  Pick<
-    UserSettings,
-    | "maxRiskPerTradePct"
-    | "maxPortfolioOpenRiskPct"
-    | "maxDrawdownThresholdPct"
-    | "maxSinglePositionPct"
-    | "maxSectorExposurePct"
-    | "maxCorrelationClusterPct"
-  >
->;
+function SettingsCard({
+  title,
+  description,
+  icon,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+        {icon}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
 
-const assetUniverseOptions: AssetUniversePreference[] = [
-  "US stocks",
-  "ETFs",
-  "gold proxy",
-  "energy proxy",
-  "bond proxy",
-  "crypto proxy",
-];
+function AssetUniversePicker({
+  selected,
+  onToggle,
+}: {
+  selected: AssetUniversePreference[];
+  onToggle: (option: AssetUniversePreference) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {assetUniverseOptions.map((option) => {
+        const isSelected = selected.includes(option);
+        return (
+          <button
+            key={option}
+            className={cn(
+              "rounded-full border px-4 py-2 text-sm transition",
+              isSelected
+                ? "border-primary/40 bg-primary/10 text-foreground"
+                : "border-white/10 bg-white/5 text-muted-foreground",
+            )}
+            onClick={() => onToggle(option)}
+            type="button"
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfilePostureCard({
+  settings,
+  guidance,
+  onApply,
+}: {
+  settings: UserSettings;
+  guidance: SettingsSnapshot["profileGuidance"];
+  onApply: (profile: UserSettings["profile"]) => void;
+}) {
+  return (
+    <SettingsCard
+      description="Profiles reset the operating envelope for how aggressively CycleOS should think about deployment."
+      icon={<BriefcaseBusiness className="h-4 w-4 text-primary" />}
+      title="Profile posture"
+    >
+      <div className="grid gap-2">
+        {guidance.map((profile) => (
+          <button
+            key={profile.profile}
+            className={cn(
+              "rounded-2xl border px-4 py-4 text-left transition",
+              settings.profile === profile.profile
+                ? "border-primary/40 bg-primary/10"
+                : "border-white/10 bg-white/5 hover:border-white/20",
+            )}
+            onClick={() => onApply(profile.profile)}
+            type="button"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-medium capitalize">{profile.profile}</p>
+              <Badge variant={settings.profile === profile.profile ? "success" : "neutral"}>
+                {profile.focus}
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">{profile.summary}</p>
+          </button>
+        ))}
+      </div>
+    </SettingsCard>
+  );
+}
+
+function AlertThresholdCard({
+  settings,
+  updateField,
+}: {
+  settings: UserSettings;
+  updateField: <TKey extends keyof UserSettings>(key: TKey, value: UserSettings[TKey]) => void;
+}) {
+  return (
+    <SettingsCard
+      description="Alert bands control when the app should push a higher-scrutiny posture."
+      icon={<BellRing className="h-4 w-4 text-warning" />}
+      title="Alert thresholds"
+    >
+      <div className="grid gap-4">
+        <Field label="Open risk alert %">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) =>
+              updateField("alertThresholds", {
+                ...settings.alertThresholds,
+                openRiskPct: Number(event.target.value),
+              })
+            }
+            step="0.1"
+            type="number"
+            value={settings.alertThresholds.openRiskPct}
+          />
+        </Field>
+        <Field label="Single-position alert %">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) =>
+              updateField("alertThresholds", {
+                ...settings.alertThresholds,
+                singlePositionPct: Number(event.target.value),
+              })
+            }
+            step="0.1"
+            type="number"
+            value={settings.alertThresholds.singlePositionPct}
+          />
+        </Field>
+        <Field label="Volatility alert level">
+          <input
+            className={fieldControlClassName}
+            onChange={(event) =>
+              updateField("alertThresholds", {
+                ...settings.alertThresholds,
+                volatilityAlertLevel: Number(event.target.value),
+              })
+            }
+            type="number"
+            value={settings.alertThresholds.volatilityAlertLevel}
+          />
+        </Field>
+      </div>
+    </SettingsCard>
+  );
+}
 
 export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
   const [formState, setFormState] = useState<UserSettings>(snapshot.settings);
@@ -81,7 +196,7 @@ export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
     setFormState((current) => ({
       ...current,
       profile,
-      ...profilePresets[profile],
+      ...settingsProfilePresets[profile],
     }));
   }
 
@@ -122,47 +237,43 @@ export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Capital and risk controls</CardTitle>
-                <CardDescription>These values feed position sizing, concentration checks, and drawdown discipline.</CardDescription>
-              </div>
-              <ShieldCheck className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Total capital</span>
+          <SettingsCard
+            description="These values feed position sizing, concentration checks, and drawdown discipline."
+            icon={<ShieldCheck className="h-4 w-4 text-primary" />}
+            title="Capital and risk controls"
+          >
+            <FieldGroup>
+              <Field label="Total capital">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("totalCapital", Number(event.target.value))}
                   type="number"
                   value={formState.totalCapital}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Cash reserve</span>
+              </Field>
+              <Field label="Cash reserve">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("cashAed", Number(event.target.value))}
                   type="number"
                   value={formState.cashAed}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reporting currency</span>
+              </Field>
+              <Field label="Reporting currency">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("reportingCurrency", event.target.value)}
                   value={formState.reportingCurrency}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Holding horizon</span>
+              </Field>
+              <Field label="Holding horizon">
                 <select
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) =>
-                    updateField("preferredHoldingHorizon", event.target.value as UserSettings["preferredHoldingHorizon"])
+                    updateField(
+                      "preferredHoldingHorizon",
+                      event.target.value as UserSettings["preferredHoldingHorizon"],
+                    )
                   }
                   value={formState.preferredHoldingHorizon}
                 >
@@ -170,180 +281,80 @@ export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
                   <option value="swing">Swing</option>
                   <option value="position">Position</option>
                 </select>
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max risk per trade %</span>
+              </Field>
+              <Field label="Max risk per trade %">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("maxRiskPerTradePct", Number(event.target.value))}
                   step="0.1"
                   type="number"
                   value={formState.maxRiskPerTradePct}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max open risk %</span>
+              </Field>
+              <Field label="Max open risk %">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("maxPortfolioOpenRiskPct", Number(event.target.value))}
                   step="0.1"
                   type="number"
                   value={formState.maxPortfolioOpenRiskPct}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max drawdown %</span>
+              </Field>
+              <Field label="Max drawdown %">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("maxDrawdownThresholdPct", Number(event.target.value))}
                   step="0.1"
                   type="number"
                   value={formState.maxDrawdownThresholdPct}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max single position %</span>
+              </Field>
+              <Field label="Max single position %">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("maxSinglePositionPct", Number(event.target.value))}
                   step="0.1"
                   type="number"
                   value={formState.maxSinglePositionPct}
                 />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max sector exposure %</span>
+              </Field>
+              <Field label="Max sector exposure %">
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  className={fieldControlClassName}
                   onChange={(event) => updateField("maxSectorExposurePct", Number(event.target.value))}
                   step="0.1"
                   type="number"
                   value={formState.maxSectorExposurePct}
                 />
-              </label>
-            </CardContent>
-          </Card>
+              </Field>
+              <Field label="Max correlation cluster %">
+                <input
+                  className={fieldControlClassName}
+                  onChange={(event) => updateField("maxCorrelationClusterPct", Number(event.target.value))}
+                  step="0.1"
+                  type="number"
+                  value={formState.maxCorrelationClusterPct}
+                />
+              </Field>
+            </FieldGroup>
+          </SettingsCard>
 
           <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Profile posture</CardTitle>
-                  <CardDescription>Profiles reset the operating envelope for how aggressively CycleOS should think about deployment.</CardDescription>
-                </div>
-                <BriefcaseBusiness className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-2">
-                  {snapshot.profileGuidance.map((profile) => (
-                    <button
-                      key={profile.profile}
-                      className={`rounded-2xl border px-4 py-4 text-left transition ${
-                        formState.profile === profile.profile
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-white/10 bg-white/5 hover:border-white/20"
-                      }`}
-                        onClick={() => applyProfile(profile.profile)}
-                        type="button"
-                      >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium capitalize">{profile.profile}</p>
-                        <Badge variant={formState.profile === profile.profile ? "success" : "neutral"}>
-                          {profile.focus}
-                        </Badge>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">{profile.summary}</p>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Alert thresholds</CardTitle>
-                  <CardDescription>Alert bands control when the app should push a higher-scrutiny posture.</CardDescription>
-                </div>
-                <BellRing className="h-4 w-4 text-warning" />
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <label className="space-y-2">
-                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Open risk alert %</span>
-                  <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
-                    onChange={(event) =>
-                      updateField("alertThresholds", {
-                        ...formState.alertThresholds,
-                        openRiskPct: Number(event.target.value),
-                      })
-                    }
-                    step="0.1"
-                    type="number"
-                    value={formState.alertThresholds.openRiskPct}
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Single-position alert %</span>
-                  <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
-                    onChange={(event) =>
-                      updateField("alertThresholds", {
-                        ...formState.alertThresholds,
-                        singlePositionPct: Number(event.target.value),
-                      })
-                    }
-                    step="0.1"
-                    type="number"
-                    value={formState.alertThresholds.singlePositionPct}
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Volatility alert level</span>
-                  <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
-                    onChange={(event) =>
-                      updateField("alertThresholds", {
-                        ...formState.alertThresholds,
-                        volatilityAlertLevel: Number(event.target.value),
-                      })
-                    }
-                    type="number"
-                    value={formState.alertThresholds.volatilityAlertLevel}
-                  />
-                </label>
-              </CardContent>
-            </Card>
+            <ProfilePostureCard
+              guidance={snapshot.profileGuidance}
+              onApply={applyProfile}
+              settings={formState}
+            />
+            <AlertThresholdCard settings={formState} updateField={updateField} />
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Preferred asset universe</CardTitle>
-              <CardDescription>Select the categories CycleOS should prioritize across scanners, watchlists, and risk reviews.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {assetUniverseOptions.map((option) => {
-                const selected = formState.preferredAssetUniverse.includes(option);
-                return (
-                  <button
-                    key={option}
-                    className={`rounded-full border px-4 py-2 text-sm transition ${
-                      selected ? "border-primary/40 bg-primary/10 text-foreground" : "border-white/10 bg-white/5 text-muted-foreground"
-                    }`}
-                    onClick={() => toggleUniverse(option)}
-                    type="button"
-                  >
-                    {option}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <SettingsCard
+          description="Select the categories CycleOS should prioritize across scanners, watchlists, and risk reviews."
+          title="Preferred asset universe"
+        >
+          <AssetUniversePicker onToggle={toggleUniverse} selected={formState.preferredAssetUniverse} />
+        </SettingsCard>
 
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4">
           <div>
