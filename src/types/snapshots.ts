@@ -11,6 +11,7 @@ import type {
   RegimeSnapshot,
   SectorHeatmapItem,
 } from "@/types/intelligence";
+import type { LiveMarketWatchlistItem } from "@/types/live-market";
 import type { BehavioralReviewSnapshot, JournalAnalytics, JournalEntry } from "@/types/journal";
 import type { PortfolioSummary, TradeIdea } from "@/types/portfolio";
 import type { SettingsProfileGuidance, UserSettings } from "@/types/settings";
@@ -38,6 +39,7 @@ export interface DashboardSnapshot {
   topRisks: RiskItem[];
   alerts: DashboardAlert[];
   portfolioSummary: PortfolioSummary;
+  marketWatchlist: LiveMarketWatchlistItem[];
 }
 
 export interface IntelligenceSnapshot {

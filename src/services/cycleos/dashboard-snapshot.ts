@@ -1,4 +1,5 @@
 import { buildPortfolioSnapshot } from "@/engines";
+import { buildMockWatchlistQuotes } from "@/lib/providers/alphaVantage";
 import { cycleOsProviders } from "@/providers";
 import { getCycleOsAppState } from "@/services/cycleos/app-state";
 import type { DashboardSnapshot } from "@/types";
@@ -24,5 +25,6 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
     topRisks: cycleOsProviders.marketData.getTopRisks(),
     alerts: cycleOsProviders.marketData.getAlerts(),
     portfolioSummary: portfolio.summary,
+    marketWatchlist: buildMockWatchlistQuotes(5),
   };
 }

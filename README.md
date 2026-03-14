@@ -105,6 +105,7 @@ Use placeholders only; do not hardcode secrets.
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/cycleos"
+ALPHA_VANTAGE_API_KEY=""
 ```
 
 Future live integrations will likely add placeholders such as:
@@ -128,22 +129,28 @@ npm install
 2. Create local environment variables
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-3. Generate Prisma client
+3. Add your Alpha Vantage key to `.env.local`
+
+```env
+ALPHA_VANTAGE_API_KEY="your_alpha_vantage_key"
+```
+
+4. Generate Prisma client
 
 ```bash
 npm run db:generate
 ```
 
-4. Push the schema to your database
+5. Push the schema to your database
 
 ```bash
 npm run db:push
 ```
 
-5. Seed the database
+6. Seed the database
 
 ```bash
 npm run db:seed
@@ -176,6 +183,19 @@ npm run build
 - App services consume provider outputs and feed engines.
 - UI pages consume snapshot services rather than importing static files.
 - This keeps the demo consistent while preserving a clean path to live providers later.
+- The Alpha Vantage integration is server-side only and flows through internal `/api/market/*` routes.
+- If Alpha Vantage is missing, fails, or rate-limits the request, the market routes return deterministic mock fallback data so the dashboard still works.
+
+## Live market data
+
+- Server-only Alpha Vantage access lives in `src/lib/providers/alphaVantage.ts`.
+- The dashboard hydrates live watchlist quotes from `/api/market/watchlist`; the frontend never calls Alpha Vantage directly.
+- Available internal routes:
+  - `GET /api/market/quote?symbol=MSFT`
+  - `GET /api/market/candles?symbol=MSFT`
+  - `GET /api/market/rsi?symbol=MSFT&interval=daily&timePeriod=14`
+  - `GET /api/market/watchlist?limit=5`
+- `.env.local`, `.next`, and `node_modules` should remain uncommitted. They are already ignored by Git in this project.
 
 ## Future live-integration roadmap
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -21,7 +21,7 @@ import { PanelList } from "@/components/ui/panel-list";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import { formatCurrency } from "@/lib/utils";
-import type { DashboardSnapshot, TradeIdea } from "@/types";
+import type { DashboardSnapshot, LiveMarketWatchlistItem, TradeIdea } from "@/types";
 
 function riskVariant(decision: TradeIdea["riskVerdict"]["decision"]) {
   if (decision === "APPROVE") return "success";
@@ -32,12 +32,44 @@ function riskVariant(decision: TradeIdea["riskVerdict"]["decision"]) {
 export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   const [selected, setSelected] = useState<TradeIdea | null>(null);
   const [ideaFilter, setIdeaFilter] = useState<"ALL" | "APPROVE" | "REDUCE" | "DEFENSIVE">("ALL");
+  const [marketWatchlist, setMarketWatchlist] = useState<LiveMarketWatchlistItem[]>(snapshot.marketWatchlist);
+  const [watchlistSource, setWatchlistSource] = useState<"live" | "mock" | "mixed">("mock");
   const portfolio = snapshot.portfolioSummary;
   const filteredIdeas = snapshot.topTradeIdeas.filter((trade) => {
     if (ideaFilter === "ALL") return true;
     if (ideaFilter === "DEFENSIVE") return trade.allocationBucket === "hedge";
     return trade.riskVerdict.decision === ideaFilter;
   });
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadWatchlist() {
+      try {
+        const response = await fetch("/api/market/watchlist?limit=5", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as {
+          items: LiveMarketWatchlistItem[];
+          source: "live" | "mock" | "mixed";
+        };
+
+        if (ignore) return;
+        setMarketWatchlist(payload.items);
+        setWatchlistSource(payload.source);
+      } catch {
+        // Keep the seeded snapshot on any network or rate-limit failure.
+      }
+    }
+
+    void loadWatchlist();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -218,6 +250,56 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                   ))}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Live market watchlist</CardTitle>
+                <CardDescription>
+                  Internal API-fed quotes from Alpha Vantage with automatic mock fallback when live data is unavailable.
+                </CardDescription>
+              </div>
+              <Badge variant={watchlistSource === "live" ? "success" : watchlistSource === "mixed" ? "warning" : "neutral"}>
+                {watchlistSource}
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <PanelList
+                items={marketWatchlist}
+                renderItem={(item) => (
+                  <div key={item.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{item.ticker}</p>
+                        <p className="text-sm text-muted-foreground">{item.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${item.quote.price.toFixed(2)}</p>
+                        <p
+                          className={`text-sm ${
+                            item.quote.changePercent >= 0 ? "text-emerald-300" : "text-rose-300"
+                          }`}
+                        >
+                          {item.quote.changePercent >= 0 ? "+" : ""}
+                          {item.quote.changePercent.toFixed(2)}%
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.thesis}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant={item.priority === "High" ? "warning" : item.priority === "Medium" ? "info" : "neutral"}>
+                        {item.priority}
+                      </Badge>
+                      <Badge variant="neutral">{item.candidateBucket}</Badge>
+                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Target: {item.targetEntry}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              />
             </CardContent>
           </Card>
         </div>
