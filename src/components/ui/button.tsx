@@ -3,9 +3,10 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_12px_30px_rgba(72,196,217,0.18)]",
-  secondary: "border border-white/10 bg-white/8 text-foreground hover:bg-white/12",
-  ghost: "bg-transparent text-muted-foreground hover:bg-white/6 hover:text-foreground",
+  primary: "border border-accent/60 bg-accent/15 text-accent hover:bg-accent/25",
+  secondary: "border border-border bg-muted text-foreground hover:border-accent/40 hover:text-accent",
+  ghost: "border border-transparent bg-transparent text-muted-foreground hover:text-accent",
+  danger: "border border-danger/50 bg-danger/10 text-danger hover:bg-danger/20",
 };
 
 export function Button({
@@ -16,7 +17,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-sm px-2.5 py-1 font-mono-tight text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors disabled:pointer-events-none disabled:opacity-40",
         variants[variant],
         className,
       )}

@@ -4,6 +4,7 @@ import type {
   DashboardAlert,
   GeopoliticalEvent,
   Holding,
+  HoldingInput,
   JournalEntry,
   JournalEntryInput,
   JournalExitInput,
@@ -41,8 +42,11 @@ export interface GeopoliticsProvider {
 }
 
 export interface PortfolioProvider {
-  getHoldings(): Holding[];
-  getWatchlist(): PortfolioWatchlistItem[];
+  getHoldings(): Promise<Holding[]>;
+  getWatchlist(): Promise<PortfolioWatchlistItem[]>;
+  createHolding(input: HoldingInput): Promise<Holding>;
+  updateHolding(id: string, input: HoldingInput): Promise<Holding>;
+  deleteHolding(id: string): Promise<void>;
 }
 
 export interface SettingsProvider {

@@ -1,421 +1,288 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   AlertTriangle,
-  ArrowRight,
-  BellRing,
-  BriefcaseBusiness,
-  Siren,
-  Target,
-  TrendingUp,
+  ArrowDownRight,
+  ArrowUpRight,
 } from "lucide-react";
 
-import { MarketPulseChart } from "@/components/charts/market-pulse-chart";
-import { TradeInsightDrawer } from "@/components/trade-insight/trade-insight-drawer";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartPanel } from "@/components/ui/chart-panel";
-import { MetricCard } from "@/components/ui/metric-card";
-import { PanelList } from "@/components/ui/panel-list";
-import { SectionHeading } from "@/components/ui/section-heading";
-import { SegmentedFilter } from "@/components/ui/segmented-filter";
-import { formatCurrency } from "@/lib/utils";
-import type { DashboardSnapshot, LiveMarketWatchlistItem, TradeIdea } from "@/types";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import type { JournalEntry, MdbOverviewSnapshot } from "@/types";
 
-function riskVariant(decision: TradeIdea["riskVerdict"]["decision"]) {
-  if (decision === "APPROVE") return "success";
-  if (decision === "REDUCE") return "warning";
-  return "danger";
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(value)).toUpperCase();
 }
 
-export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const [selected, setSelected] = useState<TradeIdea | null>(null);
-  const [ideaFilter, setIdeaFilter] = useState<"ALL" | "APPROVE" | "REDUCE" | "DEFENSIVE">("ALL");
-  const [marketWatchlist, setMarketWatchlist] = useState<LiveMarketWatchlistItem[]>(snapshot.marketWatchlist);
-  const [watchlistSource, setWatchlistSource] = useState<"live" | "mock" | "mixed">("mock");
-  const portfolio = snapshot.portfolioSummary;
-  const filteredIdeas = snapshot.topTradeIdeas.filter((trade) => {
-    if (ideaFilter === "ALL") return true;
-    if (ideaFilter === "DEFENSIVE") return trade.allocationBucket === "hedge";
-    return trade.riskVerdict.decision === ideaFilter;
-  });
+function Panel({
+  title,
+  meta,
+  children,
+  className,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("panel-border bg-card", className)}>
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-2 py-1">
+        <p className="font-mono-tight text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+          {title}
+        </p>
+        {meta && <div className="font-mono-tight text-[10px] text-muted-foreground">{meta}</div>}
+      </div>
+      <div className="p-2">{children}</div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    let ignore = false;
+function StatCell({
+  label,
+  value,
+  hint,
+  tone,
+  trendIcon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  tone?: "pos" | "neg" | "neutral";
+  trendIcon?: React.ReactNode;
+}) {
+  const valueClass =
+    tone === "pos" ? "text-success" : tone === "neg" ? "text-danger" : "text-foreground";
+  return (
+    <div className="border-r border-border px-3 py-1.5 last:border-r-0">
+      <div className="flex items-center gap-1.5">
+        <p className="font-mono-tight text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
+        </p>
+        {trendIcon}
+      </div>
+      <p className={cn("mt-0.5 font-mono-tight text-xl font-semibold tabular-nums leading-tight", valueClass)}>
+        {value}
+      </p>
+      {hint && <p className="mt-0.5 font-mono-tight text-[10px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
 
-    async function loadWatchlist() {
-      try {
-        const response = await fetch("/api/market/watchlist?limit=5", {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
+function entryCategory(entry: JournalEntry) {
+  return entry.assetCategory ?? "Others";
+}
 
-        const payload = (await response.json()) as {
-          items: LiveMarketWatchlistItem[];
-          source: "live" | "mock" | "mixed";
-        };
+export function DashboardView({ snapshot }: { snapshot: MdbOverviewSnapshot }) {
+  const currency = snapshot.settings.reportingCurrency;
+  const unrealizedPct =
+    snapshot.totalInvestedAed > 0
+      ? (snapshot.unrealizedPnlAed / snapshot.totalInvestedAed) * 100
+      : 0;
+  const unrealizedTone: "pos" | "neg" | "neutral" =
+    snapshot.unrealizedPnlAed > 0 ? "pos" : snapshot.unrealizedPnlAed < 0 ? "neg" : "neutral";
+  const realizedTone: "pos" | "neg" | "neutral" =
+    snapshot.realizedPnlAed > 0 ? "pos" : snapshot.realizedPnlAed < 0 ? "neg" : "neutral";
 
-        if (ignore) return;
-        setMarketWatchlist(payload.items);
-        setWatchlistSource(payload.source);
-      } catch {
-        // Keep the seeded snapshot on any network or rate-limit failure.
-      }
-    }
-
-    void loadWatchlist();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const sortedByPnl = [...snapshot.activeItems].sort((a, b) => b.pnlAed - a.pnlAed);
+  const oversizedBucket = snapshot.categories.find((c) => c.weightPct >= 35);
 
   return (
-    <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Dashboard"
-        title="CycleOS command center"
-        description="Translate macro regime, factor leadership, technical confirmation, and portfolio constraints into explainable swing-trade ideas."
-        action={<Badge variant="info">{snapshot.currentRegime.name}</Badge>}
-      />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          hint={`${snapshot.currentRegime.posture} posture`}
-          icon={<TrendingUp className="h-4 w-4 text-primary" />}
-          label="Regime confidence"
-          value={`${snapshot.currentRegime.confidence}%`}
-        />
-        <MetricCard
-          hint={`${snapshot.marketSummary.breadthPct}% breadth`}
-          icon={<BriefcaseBusiness className="h-4 w-4 text-cyan-300" />}
-          label="Portfolio value"
-          value={formatCurrency(portfolio.portfolioValueAed)}
-        />
-        <MetricCard
-          hint={`${portfolio.openRiskPct}% of portfolio`}
-          icon={<Target className="h-4 w-4 text-amber-300" />}
-          label="Open risk"
-          value={formatCurrency(portfolio.openRiskAed)}
-        />
-        <MetricCard
-          hint="Requires review before new risk"
-          icon={<BellRing className="h-4 w-4 text-rose-300" />}
-          label="Active alerts"
-          value={snapshot.alerts.length}
-        />
+    <div className="space-y-1">
+      {/* TOP STRIP — KPI band */}
+      <div className="grid grid-cols-2 gap-px panel-border bg-border lg:grid-cols-4">
+        <div className="bg-card">
+          <StatCell
+            label="BOOK VALUE"
+            value={formatCurrency(snapshot.currentValueAed, currency)}
+            hint={`${snapshot.activeInvestments} ACTIVE · ${snapshot.closedInvestments} CLOSED`}
+          />
+        </div>
+        <div className="bg-card">
+          <StatCell
+            label="INVESTED"
+            value={formatCurrency(snapshot.totalInvestedAed, currency)}
+            hint="CAPITAL DEPLOYED"
+          />
+        </div>
+        <div className="bg-card">
+          <StatCell
+            label="UNREALIZED"
+            value={formatCurrency(snapshot.unrealizedPnlAed, currency)}
+            hint={`${formatPercent(unrealizedPct)} ON INVESTED`}
+            tone={unrealizedTone}
+            trendIcon={
+              snapshot.unrealizedPnlAed >= 0 ? (
+                <ArrowUpRight className="h-3 w-3 text-success" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3 text-danger" />
+              )
+            }
+          />
+        </div>
+        <div className="bg-card">
+          <StatCell
+            label="REALIZED"
+            value={formatCurrency(snapshot.realizedPnlAed, currency)}
+            hint={`${snapshot.closedInvestments} CLOSED ENTRIES`}
+            tone={realizedTone}
+          />
+        </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <div>
-              <CardTitle>Current regime</CardTitle>
-              <CardDescription>{snapshot.currentRegime.explanation}</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={snapshot.currentRegime.stance === "Risk-On" ? "success" : "warning"}>
-                {snapshot.currentRegime.stance}
-              </Badge>
-              <Badge variant="neutral">{snapshot.currentRegime.posture}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Confidence</p>
-                  <p className="mt-2 text-3xl font-semibold">{snapshot.currentRegime.confidence}%</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Breadth</p>
-                  <p className="mt-2 text-3xl font-semibold">{snapshot.marketSummary.breadthPct}%</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">VIX</p>
-                  <p className="mt-2 text-3xl font-semibold">{snapshot.marketSummary.vix}</p>
-                </div>
-              </div>
-              <div className="mt-4 space-y-3">
-                {snapshot.currentRegime.drivers.map((driver) => (
-                  <div
-                    key={driver}
-                    className="rounded-2xl border border-white/8 bg-white/3 px-4 py-3 text-sm text-muted-foreground"
+      {/* MAIN ROW */}
+      <div className="grid gap-1 lg:grid-cols-[1.5fr_1fr]">
+        {/* HOLDINGS TABLE */}
+        <Panel
+          title="ACTIVE BOOK"
+          meta={<span>{snapshot.activeItems.length} POSITIONS · {currency}</span>}
+        >
+          <table className="w-full font-mono-tight text-[11px] tabular-nums">
+            <thead className="border-b border-border text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              <tr>
+                <th className="px-1 py-1 text-left">TICKER</th>
+                <th className="px-1 py-1 text-left">CAT</th>
+                <th className="px-1 py-1 text-right">INVESTED</th>
+                <th className="px-1 py-1 text-right">CURRENT</th>
+                <th className="px-1 py-1 text-right">P&L</th>
+                <th className="px-1 py-1 text-right">P&L%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedByPnl.slice(0, 12).map((item) => {
+                const tone = item.pnlAed > 0 ? "text-success" : item.pnlAed < 0 ? "text-danger" : "";
+                return (
+                  <tr className="border-b border-border/40 hover:bg-muted/30" key={item.id}>
+                    <td className="px-1 py-1">
+                      <span className="font-semibold">{item.code}</span>
+                      <span className="ml-1 text-[10px] text-muted-foreground">{item.name.slice(0, 14)}</span>
+                    </td>
+                    <td className="px-1 py-1 text-[10px] uppercase text-muted-foreground">
+                      {item.category.slice(0, 4)}
+                    </td>
+                    <td className="px-1 py-1 text-right text-foreground">
+                      {formatCurrency(item.investedAed, currency)}
+                    </td>
+                    <td className="px-1 py-1 text-right text-foreground">
+                      {formatCurrency(item.currentValueAed, currency)}
+                    </td>
+                    <td className={cn("px-1 py-1 text-right", tone)}>
+                      {item.pnlAed >= 0 ? "+" : ""}
+                      {formatCurrency(item.pnlAed, currency)}
+                    </td>
+                    <td className={cn("px-1 py-1 text-right", tone)}>{formatPercent(item.pnlPct)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Panel>
+
+        {/* RIGHT COLUMN: Allocation + Risk */}
+        <div className="grid gap-1">
+          <Panel
+            title="ALLOCATION"
+            meta={
+              <span>
+                {snapshot.categories.filter((c) => c.itemCount > 0).length} ACTIVE BUCKETS
+              </span>
+            }
+          >
+            <div className="space-y-1">
+              {snapshot.categories.map((item) => (
+                <div className="flex items-center gap-2" key={item.category}>
+                  <span className="w-20 font-mono-tight text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {item.category}
+                  </span>
+                  <div className="relative flex-1 h-3 bg-muted">
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 left-0",
+                        item.weightPct >= 35 ? "bg-warning/70" : "bg-accent/60",
+                      )}
+                      style={{ width: `${Math.min(item.weightPct, 100)}%` }}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "w-12 text-right font-mono-tight text-[11px] tabular-nums",
+                      item.weightPct >= 35 ? "text-warning" : "text-foreground",
+                    )}
                   >
-                    {driver}
-                  </div>
-                ))}
-              </div>
+                    {item.weightPct}%
+                  </span>
+                  <span className="w-20 text-right font-mono-tight text-[10px] tabular-nums text-muted-foreground">
+                    {formatCurrency(item.currentValueAed, currency)}
+                  </span>
+                </div>
+              ))}
             </div>
-              <ChartPanel
-                description="Cross-asset pulse across breadth, rates, gold, oil, and volatility."
-                title="Market pulse"
-              >
-                <MarketPulseChart />
-              </ChartPanel>
-            </CardContent>
-          </Card>
+          </Panel>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Macro and geopolitical overlay</CardTitle>
-                <CardDescription>Compact summary of what is shaping tactical risk right now.</CardDescription>
+          <Panel
+            title="RISK"
+            meta={oversizedBucket ? <span className="text-warning">1 FLAG</span> : <span className="text-success">CLEAR</span>}
+          >
+            {oversizedBucket ? (
+              <div className="flex items-start gap-2 border-l-2 border-warning/60 px-2 py-1">
+                <AlertTriangle className="mt-0.5 h-3 w-3 text-warning" />
+                <div>
+                  <p className="font-mono-tight text-[11px] text-warning">
+                    CONCENTRATION · {oversizedBucket.category.toUpperCase()}
+                  </p>
+                  <p className="font-mono-tight text-[10px] text-muted-foreground">
+                    {oversizedBucket.weightPct}% of book — above 35% guideline
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={snapshot.macroSummary.tone === "cautious" ? "warning" : "info"}>
-                  {snapshot.macroSummary.tone}
-                </Badge>
-                <Badge
-                  variant={
-                    snapshot.geopoliticalBoard.summary.overlaySeverity === "Critical"
-                      ? "danger"
-                      : snapshot.geopoliticalBoard.summary.overlaySeverity === "High"
-                        ? "warning"
-                        : "neutral"
-                  }
+            ) : (
+              <p className="font-mono-tight text-[11px] text-muted-foreground">No threshold breaches.</p>
+            )}
+          </Panel>
+        </div>
+      </div>
+
+      {/* BOTTOM ROW: Journal feed */}
+      <Panel
+        title="RECENT JOURNAL"
+        meta={<span>{snapshot.recentEntries.length} ENTRIES</span>}
+      >
+        <table className="w-full font-mono-tight text-[11px] tabular-nums">
+          <thead className="border-b border-border text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            <tr>
+              <th className="px-1 py-1 text-left">DATE</th>
+              <th className="px-1 py-1 text-left">TICKER</th>
+              <th className="px-1 py-1 text-left">NAME</th>
+              <th className="px-1 py-1 text-left">CAT</th>
+              <th className="px-1 py-1 text-left">STATUS</th>
+              <th className="px-1 py-1 text-left">THESIS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {snapshot.recentEntries.map((entry) => (
+              <tr className="border-b border-border/40 hover:bg-muted/30" key={entry.id}>
+                <td className="px-1 py-1 text-muted-foreground">{formatShortDate(entry.openedAt)}</td>
+                <td className="px-1 py-1 font-semibold">{entry.ticker}</td>
+                <td className="px-1 py-1 text-foreground">{entry.assetName ?? entry.ticker}</td>
+                <td className="px-1 py-1 text-[10px] uppercase text-muted-foreground">
+                  {entryCategory(entry).slice(0, 4)}
+                </td>
+                <td
+                  className={cn(
+                    "px-1 py-1 text-[10px] uppercase",
+                    entry.status === "OPEN" ? "text-success" : "text-muted-foreground",
+                  )}
                 >
-                  {snapshot.geopoliticalBoard.summary.overlaySeverity}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm font-medium">{snapshot.macroSummary.headline}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{snapshot.macroSummary.explanation}</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {snapshot.macroSummary.bullets.map((bullet) => (
-                  <div key={bullet} className="rounded-2xl border border-white/8 bg-[#08111c] p-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Macro signal</p>
-                    <p className="mt-2 text-sm font-medium">{bullet}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm font-medium">{snapshot.geopoliticalBoard.summary.headline}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{snapshot.geopoliticalBoard.summary.posture}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {snapshot.geopoliticalBoard.summary.dominantChannels.map((channel) => (
-                    <Badge key={channel} variant="neutral">
-                      {channel}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Portfolio snapshot</CardTitle>
-                <CardDescription>AED reporting with open-risk awareness.</CardDescription>
-              </div>
-              <Badge variant="neutral">{portfolio.topExposure}</Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm text-muted-foreground">Portfolio value</p>
-                  <p className="mt-2 text-2xl font-semibold">{formatCurrency(portfolio.portfolioValueAed)}</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm text-muted-foreground">Open risk</p>
-                  <p className="mt-2 text-2xl font-semibold">{formatCurrency(portfolio.openRiskAed)}</p>
-                  <p className="text-xs text-muted-foreground">{portfolio.openRiskPct}% of portfolio</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm text-muted-foreground">Cash</p>
-                  <p className="mt-2 text-2xl font-semibold">{formatCurrency(portfolio.cashAed)}</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm text-muted-foreground">Daily PnL</p>
-                  <p className="mt-2 text-2xl font-semibold">{formatCurrency(portfolio.dailyPnlAed)}</p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-2xl border border-white/8 bg-white/4 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">Allocation mix</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Snapshot</p>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {portfolio.allocationMix.map((item) => (
-                    <div key={item.name} className="rounded-2xl border border-white/8 bg-[#08111c] p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.name}</p>
-                      <p className="mt-2 text-xl font-semibold">{item.value}%</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Live market watchlist</CardTitle>
-                <CardDescription>
-                  Internal API-fed quotes from Alpha Vantage with automatic mock fallback when live data is unavailable.
-                </CardDescription>
-              </div>
-              <Badge variant={watchlistSource === "live" ? "success" : watchlistSource === "mixed" ? "warning" : "neutral"}>
-                {watchlistSource}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <PanelList
-                items={marketWatchlist}
-                renderItem={(item) => (
-                  <div key={item.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{item.ticker}</p>
-                        <p className="text-sm text-muted-foreground">{item.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">${item.quote.price.toFixed(2)}</p>
-                        <p
-                          className={`text-sm ${
-                            item.quote.changePercent >= 0 ? "text-emerald-300" : "text-rose-300"
-                          }`}
-                        >
-                          {item.quote.changePercent >= 0 ? "+" : ""}
-                          {item.quote.changePercent.toFixed(2)}%
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{item.thesis}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Badge variant={item.priority === "High" ? "warning" : item.priority === "Medium" ? "info" : "neutral"}>
-                        {item.priority}
-                      </Badge>
-                      <Badge variant="neutral">{item.candidateBucket}</Badge>
-                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        Target: {item.targetEntry}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Top trade ideas</CardTitle>
-              <CardDescription>Ranked by opportunity score and filtered through portfolio rules.</CardDescription>
-            </div>
-            <SegmentedFilter
-              onChange={setIdeaFilter}
-              options={[
-                { label: "ALL", value: "ALL" },
-                { label: "APPROVE", value: "APPROVE" },
-                { label: "REDUCE", value: "REDUCE" },
-                { label: "DEFENSIVE", value: "DEFENSIVE" },
-              ]}
-              value={ideaFilter}
-            />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {filteredIdeas.map((trade) => (
-              <button
-                key={trade.ticker}
-                className="w-full rounded-[24px] border border-white/10 bg-white/4 p-5 text-left transition hover:border-primary/35 hover:bg-white/6"
-                onClick={() => setSelected(trade)}
-                type="button"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <p className="text-lg font-semibold">{trade.ticker}</p>
-                      <Badge variant={riskVariant(trade.riskVerdict.decision)}>{trade.riskVerdict.decision}</Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{trade.name}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="neutral">{trade.sector}</Badge>
-                      <Badge variant="neutral">{trade.region}</Badge>
-                      <Badge variant="info">{trade.allocationBucket}</Badge>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-6 rounded-[20px] border border-white/10 bg-[#0d1624] px-4 py-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Score</p>
-                      <p className="mt-2 text-2xl font-semibold">{trade.opportunityScore}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Action</p>
-                      <p className="mt-2 text-2xl font-semibold">{trade.direction}</p>
-                    </div>
-                    <div className="flex items-center gap-2 self-center text-sm text-primary">
-                      Open insight <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                </div>
-              </button>
+                  {entry.status}
+                </td>
+                <td className="max-w-md truncate px-1 py-1 text-muted-foreground">{entry.thesis}</td>
+              </tr>
             ))}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Alerts</CardTitle>
-                <CardDescription>What needs attention before new risk is added.</CardDescription>
-              </div>
-              <Siren className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <PanelList items={snapshot.alerts} renderItem={(alert) => (
-                <div key={alert.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                  <p className="font-medium">{alert.title}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{alert.message}</p>
-                </div>
-              )} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Top risks</CardTitle>
-                <CardDescription>Macro and portfolio hazards currently on deck.</CardDescription>
-              </div>
-              <AlertTriangle className="h-4 w-4 text-danger" />
-            </CardHeader>
-            <CardContent>
-              <PanelList items={snapshot.topRisks} renderItem={(risk) => (
-                <div key={risk.id} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{risk.title}</p>
-                    <Badge
-                      variant={
-                        risk.severity === "Critical"
-                          ? "danger"
-                          : risk.severity === "High"
-                            ? "warning"
-                            : "neutral"
-                      }
-                    >
-                      {risk.severity}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{risk.explanation}</p>
-                </div>
-              )} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <TradeInsightDrawer onClose={() => setSelected(null)} open={Boolean(selected)} trade={selected} />
+          </tbody>
+        </table>
+      </Panel>
     </div>
   );
 }

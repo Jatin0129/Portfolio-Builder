@@ -1,8 +1,8 @@
 import { PortfolioRiskView } from "@/components/portfolio/portfolio-risk-view";
-import { getPortfolioSnapshot } from "@/services/cycleos-service";
+import { getMdbInvestmentsSnapshot } from "@/services/mdb-service";
 
 export default async function PortfolioRiskPage() {
-  const snapshot = await getPortfolioSnapshot();
+  const snapshot = await getMdbInvestmentsSnapshot();
 
   return <PortfolioRiskView snapshot={snapshot} />;
 }

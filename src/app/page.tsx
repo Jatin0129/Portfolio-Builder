@@ -1,8 +1,8 @@
 import { DashboardView } from "@/components/dashboard/dashboard-view";
-import { getDashboardSnapshot } from "@/services/cycleos-service";
+import { getMdbOverviewSnapshot } from "@/services/mdb-service";
 
 export default async function DashboardPage() {
-  const snapshot = await getDashboardSnapshot();
+  const snapshot = await getMdbOverviewSnapshot();
 
   return <DashboardView snapshot={snapshot} />;
 }

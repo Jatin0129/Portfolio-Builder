@@ -1,0 +1,14 @@
+# OpenJarvis upstream clone (do not commit)
+openjarvis/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.uv/
+
+# Local state
+.openjarvis/
+*.db
+*.sqlite
+logs/

@@ -15,8 +15,8 @@ function buildBenchmarkItems(): MarketFeedInstrument[] {
   }));
 }
 
-function buildHoldingItems(): MarketFeedInstrument[] {
-  return cycleOsProviders.portfolio.getHoldings().map((item) => ({
+async function buildHoldingItems(): Promise<MarketFeedInstrument[]> {
+  return (await cycleOsProviders.portfolio.getHoldings()).map((item) => ({
     id: item.id,
     symbol: item.ticker,
     name: item.name,
@@ -30,8 +30,8 @@ function buildHoldingItems(): MarketFeedInstrument[] {
   }));
 }
 
-function buildWatchlistItems(): MarketFeedInstrument[] {
-  return cycleOsProviders.portfolio.getWatchlist().map((item) => ({
+async function buildWatchlistItems(): Promise<MarketFeedInstrument[]> {
+  return (await cycleOsProviders.portfolio.getWatchlist()).map((item) => ({
     id: item.id,
     symbol: item.ticker,
     name: item.name,
@@ -64,15 +64,15 @@ function buildUniverseItems(): MarketFeedInstrument[] {
   }));
 }
 
-export function getTrackedMarketInstruments(
+export async function getTrackedMarketInstruments(
   category: MarketFeedCategory = "watchlist",
   symbols?: string[],
   limit?: number,
-): MarketFeedInstrument[] {
+): Promise<MarketFeedInstrument[]> {
   const sections: Record<MarketFeedCategory, MarketFeedInstrument[]> = {
     benchmarks: buildBenchmarkItems(),
-    holdings: buildHoldingItems(),
-    watchlist: buildWatchlistItems(),
+    holdings: await buildHoldingItems(),
+    watchlist: await buildWatchlistItems(),
     universe: buildUniverseItems(),
   };
 
@@ -86,8 +86,8 @@ export function getTrackedMarketInstruments(
 export async function getMarketFeedSnapshot(): Promise<MarketFeedSnapshot> {
   const sections: Record<MarketFeedCategory, MarketFeedInstrument[]> = {
     benchmarks: buildBenchmarkItems(),
-    holdings: buildHoldingItems(),
-    watchlist: buildWatchlistItems(),
+    holdings: await buildHoldingItems(),
+    watchlist: await buildWatchlistItems(),
     universe: buildUniverseItems(),
   };
 

@@ -3,11 +3,11 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  neutral: "border-white/10 bg-white/[0.05] text-foreground",
-  success: "border-emerald-500/25 bg-emerald-500/12 text-emerald-300",
-  warning: "border-amber-500/25 bg-amber-500/12 text-amber-300",
-  danger: "border-rose-500/25 bg-rose-500/12 text-rose-300",
-  info: "border-cyan-500/25 bg-cyan-500/12 text-cyan-300",
+  neutral: "border-border bg-muted text-foreground",
+  success: "border-success/40 bg-success/10 text-success",
+  warning: "border-warning/40 bg-warning/10 text-warning",
+  danger: "border-danger/40 bg-danger/10 text-danger",
+  info: "border-info/40 bg-info/10 text-info",
 };
 
 export function Badge({
@@ -18,7 +18,7 @@ export function Badge({
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+        "inline-flex items-center rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]",
         variants[variant],
         className,
       )}

@@ -38,8 +38,8 @@ function buildRegimeInput(
 
 export const getCycleOsAppState = cache(async () => {
   const settingsPromise = getUserSettings();
-  const holdings = cycleOsProviders.portfolio.getHoldings();
-  const watchlist = cycleOsProviders.portfolio.getWatchlist();
+  const holdingsPromise = cycleOsProviders.portfolio.getHoldings();
+  const watchlistPromise = cycleOsProviders.portfolio.getWatchlist();
   const marketSummary = getMarketSummary(cycleOsProviders.marketData.getMarketSummary());
   const macroState = getMacroState(cycleOsProviders.macroData.getMacroState());
   const macroEvents = getMacroEvents(cycleOsProviders.macroData.getMacroEvents());
@@ -52,7 +52,11 @@ export const getCycleOsAppState = cache(async () => {
     macroState,
     geopoliticalBoard,
   );
-  const settings = await settingsPromise;
+  const [settings, holdings, watchlist] = await Promise.all([
+    settingsPromise,
+    holdingsPromise,
+    watchlistPromise,
+  ]);
   const tradeIdeas = generateTradeIdeas({
     assets,
     holdings,

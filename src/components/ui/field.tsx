@@ -3,7 +3,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const fieldControlClassName =
-  "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/35";
+  "w-full rounded-sm border border-border bg-muted/40 px-2 py-1 font-mono-tight text-[12px] text-foreground outline-none transition focus:border-accent/60 focus:bg-card";
 
 export function Field({
   label,
@@ -16,14 +16,14 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className={cn("space-y-2", className)}>
-      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+    <label className={cn("space-y-1", className)}>
+      <span className="font-mono-tight text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</span>
       {children}
-      {description ? <span className="block text-xs text-muted-foreground">{description}</span> : null}
+      {description ? <span className="block font-mono-tight text-[10px] text-muted-foreground">{description}</span> : null}
     </label>
   );
 }
 
 export function FieldGroup({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("grid gap-4 md:grid-cols-2", className)} {...props} />;
+  return <div className={cn("grid gap-2 md:grid-cols-2", className)} {...props} />;
 }

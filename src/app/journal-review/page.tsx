@@ -1,6 +1,6 @@
 import { JournalReviewView } from "@/components/journal/journal-review-view";
-import { getReviewSnapshot } from "@/services/cycleos-service";
+import { getMdbJournalSnapshot } from "@/services/mdb-service";
 
 export default async function JournalReviewPage() {
-  return <JournalReviewView snapshot={await getReviewSnapshot()} />;
+  return <JournalReviewView snapshot={await getMdbJournalSnapshot()} />;
 }

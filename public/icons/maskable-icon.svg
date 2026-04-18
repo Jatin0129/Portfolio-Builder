@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>MDB Journal Maskable Icon</title>
+  <rect width="512" height="512" fill="#070b12"/>
+  <rect x="72" y="72" width="368" height="368" rx="84" fill="#10202f" stroke="#5fd7df" stroke-opacity=".24" stroke-width="12"/>
+  <text x="256" y="292" fill="#e8f4f7" font-size="148" font-family="Aptos, IBM Plex Sans, Segoe UI, sans-serif" font-weight="700" text-anchor="middle">MDB</text>
+</svg>

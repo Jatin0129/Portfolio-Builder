@@ -26,12 +26,12 @@ export function DataTable<TRow>({
   rowClassName?: string;
 }) {
   return (
-    <div className={cn("overflow-x-auto rounded-[24px] border border-white/10 bg-white/4", className)}>
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-white/8 bg-[#0c1522] text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+    <div className={cn("panel-border bg-card overflow-x-auto", className)}>
+      <table className="min-w-full text-left font-mono-tight text-[11px] tabular-nums">
+        <thead className="border-b border-border bg-muted/40 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className={cn("px-4 py-3 font-medium", column.className)}>
+              <th key={column.key} className={cn("px-2 py-1.5 font-semibold", column.className)}>
                 {column.header}
               </th>
             ))}
@@ -40,9 +40,9 @@ export function DataTable<TRow>({
         <tbody>
           {rows.length ? (
             rows.map((row) => (
-              <tr key={getRowKey(row)} className={cn("border-b border-white/6 last:border-b-0", rowClassName)}>
+              <tr key={getRowKey(row)} className={cn("border-b border-border/40 last:border-b-0 hover:bg-muted/30", rowClassName)}>
                 {columns.map((column) => (
-                  <td key={column.key} className={cn("px-4 py-4 align-top", column.cellClassName)}>
+                  <td key={column.key} className={cn("px-2 py-1.5 align-middle", column.cellClassName)}>
                     {column.render(row)}
                   </td>
                 ))}
@@ -50,7 +50,7 @@ export function DataTable<TRow>({
             ))
           ) : (
             <tr>
-              <td className="px-4 py-10 text-center text-sm text-muted-foreground" colSpan={columns.length}>
+              <td className="px-3 py-6 text-center text-[11px] text-muted-foreground" colSpan={columns.length}>
                 {emptyState}
               </td>
             </tr>

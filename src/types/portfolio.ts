@@ -195,6 +195,23 @@ export interface Holding {
   openRiskAed: number;
 }
 
+export interface HoldingInput {
+  ticker: string;
+  name: string;
+  assetClass: string;
+  sector: string;
+  region: string;
+  currency: string;
+  themes: string[];
+  allocationBucket: Exclude<AllocationBucketKey, "cash">;
+  quantity: number;
+  investedAmountAed: number;
+  currentValueAed: number;
+  beta: number;
+  correlationTag: string;
+  stopDistancePct: number;
+}
+
 export interface PortfolioWatchlistItem {
   id: string;
   ticker: string;

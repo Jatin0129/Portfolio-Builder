@@ -1,89 +1,258 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, ShieldAlert, Wallet } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
 
-import { AllocationChart } from "@/components/charts/allocation-chart";
+import { useRouter } from "next/navigation";
+import { Building2, Landmark, Layers3, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartPanel } from "@/components/ui/chart-panel";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Field, FieldGroup, fieldControlClassName } from "@/components/ui/field";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PanelList } from "@/components/ui/panel-list";
-import { Progress } from "@/components/ui/progress";
+import { Modal } from "@/components/ui/modal";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SegmentedFilter } from "@/components/ui/segmented-filter";
 import { formatCurrency } from "@/lib/utils";
-import type { Holding, PortfolioSnapshot } from "@/types";
+import type { Holding, HoldingInput, MdbInvestmentItem, MdbInvestmentsSnapshot } from "@/types";
 
-function actionVariant(action: string) {
-  if (action === "Trim") return "warning" as const;
-  if (action === "Increase") return "success" as const;
-  return "neutral" as const;
+type InvestmentFormState = {
+  ticker: string;
+  name: string;
+  assetClass: string;
+  sector: string;
+  region: string;
+  currency: string;
+  themes: string;
+  allocationBucket: Holding["allocationBucket"];
+  quantity: number;
+  investedAmountAed: number;
+  currentValueAed: number;
+  beta: number;
+  correlationTag: string;
+  stopDistancePct: number;
+};
+
+function pnlVariant(value: number) {
+  return value >= 0 ? "success" : "danger";
 }
 
-function statusVariant(status: string) {
-  if (status === "Breach" || status === "overweight") return "danger" as const;
-  if (status === "Watch" || status === "underweight") return "warning" as const;
-  if (status === "neutral") return "neutral" as const;
-  return "success" as const;
+function defaultForm(): InvestmentFormState {
+  return {
+    ticker: "",
+    name: "",
+    assetClass: "Equity",
+    sector: "",
+    region: "United Arab Emirates",
+    currency: "AED",
+    themes: "",
+    allocationBucket: "core",
+    quantity: 1,
+    investedAmountAed: 0,
+    currentValueAed: 0,
+    beta: 0.4,
+    correlationTag: "MDB Book",
+    stopDistancePct: 3,
+  };
 }
 
-export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot }) {
-  const { exposures, holdings, overUnderweights, risk, settings, suggestedAllocation, summary, watchlist } =
-    snapshot;
-  const [holdingFilter, setHoldingFilter] = useState<"ALL" | "core" | "tactical" | "hedge">("ALL");
-  const filteredHoldings =
-    holdingFilter === "ALL"
-      ? holdings
-      : holdings.filter((holding) => holding.allocationBucket === holdingFilter);
-  const holdingColumns: DataTableColumn<Holding>[] = [
+function formFromInvestment(item: MdbInvestmentItem): InvestmentFormState {
+  return {
+    ticker: item.code,
+    name: item.name,
+    assetClass: item.vehicle,
+    sector: item.sector ?? item.vehicle,
+    region: item.region,
+    currency: item.currency ?? "AED",
+    themes: item.notes.join(", "),
+    allocationBucket: item.allocationBucket ?? "core",
+    quantity: item.quantity ?? 1,
+    investedAmountAed: item.investedAed,
+    currentValueAed: item.currentValueAed,
+    beta: item.beta ?? 0.4,
+    correlationTag: item.correlationTag ?? "MDB Book",
+    stopDistancePct: item.stopDistancePct ?? 3,
+  };
+}
+
+function toHoldingInput(form: InvestmentFormState): HoldingInput {
+  return {
+    ticker: form.ticker.trim().toUpperCase(),
+    name: form.name.trim(),
+    assetClass: form.assetClass.trim(),
+    sector: form.sector.trim() || form.assetClass.trim(),
+    region: form.region.trim(),
+    currency: form.currency.trim().toUpperCase(),
+    themes: form.themes
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    allocationBucket: form.allocationBucket,
+    quantity: Number(form.quantity),
+    investedAmountAed: Number(form.investedAmountAed),
+    currentValueAed: Number(form.currentValueAed),
+    beta: Number(form.beta),
+    correlationTag: form.correlationTag.trim(),
+    stopDistancePct: Number(form.stopDistancePct),
+  };
+}
+
+export function PortfolioRiskView({ snapshot }: { snapshot: MdbInvestmentsSnapshot }) {
+  const router = useRouter();
+  const [filter, setFilter] = useState<"ALL" | "Equity" | "Bonds" | "Real Estate" | "Others">("ALL");
+  const [isPending, startTransition] = useTransition();
+  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<MdbInvestmentItem | null>(null);
+  const [formState, setFormState] = useState<InvestmentFormState>(defaultForm());
+
+  const investments = useMemo(
+    () =>
+      filter === "ALL"
+        ? snapshot.investments
+        : snapshot.investments.filter((item) => item.category === filter),
+    [filter, snapshot.investments],
+  );
+
+  const totalCurrent = investments.reduce((sum, item) => sum + item.currentValueAed, 0);
+  const totalInvested = investments.reduce((sum, item) => sum + item.investedAed, 0);
+  const totalPnl = totalCurrent - totalInvested;
+
+  function openCreateModal() {
+    setModalMode("create");
+    setEditingInvestment(null);
+    setFormState(defaultForm());
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(item: MdbInvestmentItem) {
+    setModalMode("edit");
+    setEditingInvestment(item);
+    setFormState(formFromInvestment(item));
+    setIsModalOpen(true);
+  }
+
+  function updateField<TKey extends keyof InvestmentFormState>(
+    key: TKey,
+    value: InvestmentFormState[TKey],
+  ) {
+    setFormState((current) => ({ ...current, [key]: value }));
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    startTransition(async () => {
+      try {
+        const payload = toHoldingInput(formState);
+        const method = modalMode === "edit" && editingInvestment ? "PUT" : "POST";
+        const url =
+          modalMode === "edit" && editingInvestment
+            ? `/api/portfolio/holdings/${editingInvestment.id}`
+            : "/api/portfolio/holdings";
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to save investment");
+        }
+
+        setStatus("saved");
+        setIsModalOpen(false);
+        setFormState(defaultForm());
+        router.refresh();
+      } catch {
+        setStatus("error");
+      }
+    });
+  }
+
+  function handleDelete(item: MdbInvestmentItem) {
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/portfolio/holdings/${item.id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to delete investment");
+        }
+
+        setStatus("saved");
+        router.refresh();
+      } catch {
+        setStatus("error");
+      }
+    });
+  }
+
+  const columns: DataTableColumn<MdbInvestmentItem>[] = [
     {
       key: "asset",
       header: "Asset",
-      render: (holding) => (
+      render: (item) => (
         <div>
-          <p className="font-medium text-foreground">{holding.ticker}</p>
-          <p className="text-xs text-muted-foreground">{holding.name}</p>
+          <p className="font-medium text-foreground">{item.name}</p>
+          <p className="text-xs text-muted-foreground">{item.code}</p>
         </div>
       ),
     },
     {
-      key: "bucket",
-      header: "Bucket",
-      render: (holding) => <Badge variant="neutral">{holding.allocationBucket}</Badge>,
+      key: "category",
+      header: "Category",
+      render: (item) => <Badge variant="info">{item.category}</Badge>,
     },
     {
-      key: "value",
-      header: "Value",
-      render: (holding) => formatCurrency(holding.marketValueAed),
+      key: "vehicle",
+      header: "Vehicle",
+      render: (item) => item.vehicle,
     },
     {
-      key: "weight",
-      header: "Weight",
-      render: (holding) => `${holding.weightPct}%`,
+      key: "invested",
+      header: "Invested",
+      render: (item) => formatCurrency(item.investedAed, snapshot.settings.reportingCurrency),
+    },
+    {
+      key: "current",
+      header: "Current value",
+      render: (item) => formatCurrency(item.currentValueAed, snapshot.settings.reportingCurrency),
     },
     {
       key: "pnl",
-      header: "PnL",
-      render: (holding) => formatCurrency(holding.unrealizedPnlAed),
-    },
-    {
-      key: "open-risk",
-      header: "Open risk",
-      render: (holding) => formatCurrency(holding.openRiskAed),
-    },
-    {
-      key: "themes",
-      header: "Themes",
-      render: (holding) => (
-        <div className="flex flex-wrap gap-2">
-          {holding.themes.map((theme) => (
-            <Badge key={theme} variant="neutral">
-              {theme}
-            </Badge>
-          ))}
+      header: "P&L",
+      render: (item) => (
+        <div className="space-y-1">
+          <Badge variant={pnlVariant(item.pnlAed)}>
+            {formatCurrency(item.pnlAed, snapshot.settings.reportingCurrency)}
+          </Badge>
+          <p className="text-xs text-muted-foreground">{item.pnlPct}%</p>
         </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (item) => (
+        item.source === "portfolio" ? (
+          <div className="flex gap-2">
+            <Button onClick={() => openEditModal(item)} type="button" variant="secondary">
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => handleDelete(item)} type="button" variant="ghost">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Badge variant="neutral">Journal-owned</Badge>
+        )
       ),
     },
   ];
@@ -91,313 +260,252 @@ export function PortfolioRiskView({ snapshot }: { snapshot: PortfolioSnapshot })
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Portfolio & Risk"
-        title="Allocation discipline in AED"
-        description="Holdings, watchlist, normalized exposures, and suggested allocation all sit on one decision surface."
-        action={<Badge variant="warning">{risk.totalOpenRiskPct}% open risk</Badge>}
+        eyebrow="Investments"
+        title="Current book by asset class"
+        description="A clean working table for the live book, grouped under the four portfolio buckets that matter for MDB."
+        action={
+          <div className="flex items-center gap-3">
+            {status === "saved" ? <Badge variant="success">Saved</Badge> : null}
+            {status === "error" ? <Badge variant="danger">Action failed</Badge> : null}
+            <Button onClick={openCreateModal} type="button">
+              <Plus className="mr-2 h-4 w-4" />
+              Add investment
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          hint="Marked in AED"
+          hint="Across all active items"
           icon={<Wallet className="h-4 w-4 text-primary" />}
-          label="Invested capital"
-          value={formatCurrency(summary.investedAed)}
+          label="Current value"
+          value={formatCurrency(totalCurrent, snapshot.settings.reportingCurrency)}
         />
         <MetricCard
-          hint={`${risk.totalOpenRiskPct}% portfolio risk`}
-          icon={<ShieldAlert className="h-4 w-4 text-amber-300" />}
-          label="Open risk"
-          value={formatCurrency(risk.totalOpenRiskAed)}
+          hint="Capital deployed in this filter"
+          icon={<Layers3 className="h-4 w-4 text-cyan-300" />}
+          label="Invested amount"
+          value={formatCurrency(totalInvested, snapshot.settings.reportingCurrency)}
         />
         <MetricCard
-          hint={summary.topExposure}
-          icon={<AlertTriangle className="h-4 w-4 text-rose-300" />}
-          label="Largest exposure"
-          value={summary.topExposure.split(" at ")[0]}
+          hint="Mark-to-market"
+          icon={<Landmark className="h-4 w-4 text-emerald-300" />}
+          label="Open P&L"
+          value={formatCurrency(totalPnl, snapshot.settings.reportingCurrency)}
         />
-        <MetricCard label="Cash reserve" value={formatCurrency(summary.cashAed)} hint="Dry powder for new setups" />
+        <MetricCard
+          hint="Book construction"
+          icon={<Building2 className="h-4 w-4 text-amber-300" />}
+          label="Tracked categories"
+          value={snapshot.categories.filter((item) => item.itemCount > 0).length}
+        />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Allocation charts</CardTitle>
-              <CardDescription>Current book structure plus the suggested allocation mix.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ChartPanel
-              description="Current book structure plus the suggested allocation mix."
-              title="Allocation mix"
-            >
-              <AllocationChart data={summary.allocationMix} />
-            </ChartPanel>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {suggestedAllocation.buckets.map((bucket) => (
-                <div key={bucket.key} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{bucket.label}</p>
-                    <Badge variant={bucket.deltaPct < 0 ? "warning" : bucket.deltaPct > 0 ? "success" : "neutral"}>
-                      {bucket.deltaPct > 0 ? `+${bucket.deltaPct}%` : `${bucket.deltaPct}%`}
-                    </Badge>
-                  </div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current</p>
-                      <p className="mt-1 text-xl font-semibold">{bucket.currentPct}%</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</p>
-                      <p className="mt-1 text-xl font-semibold">{bucket.targetPct}%</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-muted-foreground">{bucket.rationale}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Investment table</CardTitle>
+            <CardDescription>Use the filters to move between Equity, Bonds, Real Estate, and Others.</CardDescription>
+          </div>
+          <SegmentedFilter
+            onChange={(value) => setFilter(value as typeof filter)}
+            options={[
+              { label: "ALL", value: "ALL" },
+              { label: "EQUITY", value: "Equity" },
+              { label: "BONDS", value: "Bonds" },
+              { label: "REAL ESTATE", value: "Real Estate" },
+              { label: "OTHERS", value: "Others" },
+            ]}
+            value={filter}
+          />
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            emptyState="No investments found for this category yet."
+            getRowKey={(item) => item.id}
+            rows={investments}
+          />
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Holdings table</CardTitle>
-              <CardDescription>Current positions with AED value, normalized weight, and theme tagging.</CardDescription>
-            </div>
-            <SegmentedFilter
-              onChange={setHoldingFilter}
-              options={[
-                { label: "ALL", value: "ALL" },
-                { label: "CORE", value: "core" },
-                { label: "TACTICAL", value: "tactical" },
-                { label: "HEDGE", value: "hedge" },
-              ]}
-              value={holdingFilter}
-            />
-          </CardHeader>
-          <CardContent className="overflow-hidden">
-            <DataTable columns={holdingColumns} getRowKey={(holding) => holding.id} rows={filteredHoldings} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Exposure map</CardTitle>
-              <CardDescription>Chart-ready exposure rows generated by the portfolio engine.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {[
-              { title: "Sector exposure", items: exposures.sector },
-              { title: "Theme exposure", items: exposures.theme },
-              { title: "Asset-class exposure", items: exposures.assetClass },
-              { title: "Region exposure", items: exposures.region },
-            ].map((section) => (
-              <div key={section.title}>
-                <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {section.title}
-                </p>
-                <div className="grid gap-3">
-                  {section.items.map((item) => (
-                    <div key={item.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium">{item.label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.weightPct}% | {formatCurrency(item.valueAed)}
-                        </p>
-                      </div>
-                      <Progress className="mt-3" value={item.weightPct} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
+      <div className="grid gap-4 xl:grid-cols-4">
+        {snapshot.categories.map((category) => (
+          <Card key={category.category}>
             <CardHeader>
               <div>
-                <CardTitle>Overweight and underweight map</CardTitle>
-                <CardDescription>Current exposure versus the engine's working targets.</CardDescription>
+                <CardTitle>{category.category}</CardTitle>
+                <CardDescription>{category.itemCount} tracked positions</CardDescription>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {overUnderweights.map((item) => (
-                <div key={`${item.dimension}-${item.label}`} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.label}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.dimension}</p>
-                    </div>
-                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {item.currentPct}% current vs {item.targetPct}% target
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.rationale}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Watchlist</CardTitle>
-                <CardDescription>Mock candidates with allocation intent and target entry zones.</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <PanelList items={watchlist} renderItem={(item) => (
-                <div key={item.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.ticker}</p>
-                      <p className="text-sm text-muted-foreground">{item.name}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={item.priority === "High" ? "warning" : item.priority === "Medium" ? "info" : "neutral"}>
-                        {item.priority}
-                      </Badge>
-                      <Badge variant="neutral">{item.candidateBucket}</Badge>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.thesis}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Entry: {item.targetEntry} | Suggested size: {item.candidateAllocationPct}%
-                  </p>
-                </div>
-              )} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Risk summary cards</CardTitle>
-              <CardDescription>Configured portfolio limits and live open-risk contribution.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <p className="text-sm text-muted-foreground">Max risk per trade</p>
-              <p className="mt-2 text-2xl font-semibold">{settings.maxRiskPerTradePct}%</p>
-            </div>
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <p className="text-sm text-muted-foreground">Max portfolio open risk</p>
-              <p className="mt-2 text-2xl font-semibold">{settings.maxPortfolioOpenRiskPct}%</p>
-            </div>
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <p className="text-sm text-muted-foreground">Max single position</p>
-              <p className="mt-2 text-2xl font-semibold">{settings.maxSinglePositionPct}%</p>
-            </div>
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <p className="text-sm text-muted-foreground">Max sector exposure</p>
-              <p className="mt-2 text-2xl font-semibold">{settings.maxSectorExposurePct}%</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Open risk view</CardTitle>
-                <CardDescription>Live book risk and concentration pressure.</CardDescription>
-              </div>
+              <Badge variant={category.weightPct >= 35 ? "warning" : "neutral"}>{category.weightPct}%</Badge>
             </CardHeader>
             <CardContent>
-              <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">Total open risk</p>
-                  <Badge variant="warning">{risk.totalOpenRiskPct}% live risk</Badge>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Total open risk is {formatCurrency(risk.totalOpenRiskAed)} across current positions.
-                </p>
-              </div>
-              <div className="mt-4 space-y-3">
-                {holdings.map((holding) => (
-                  <div key={holding.id} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{holding.ticker}</p>
-                      <p className="text-sm text-muted-foreground">{formatCurrency(holding.openRiskAed)}</p>
-                    </div>
-                    <Progress
-                      className="mt-3"
-                      indicatorClassName="bg-amber-400"
-                      value={(holding.openRiskAed / risk.totalOpenRiskAed) * 100}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Concentration and correlation warning section</CardTitle>
-                <CardDescription>Caps are enforced before new trades are approved.</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {risk.concentrationChecks.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{item.label}</p>
-                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {item.exposurePct}% exposure vs {item.thresholdPct}% threshold
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Invested</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {formatCurrency(category.investedAed, snapshot.settings.reportingCurrency)}
                   </p>
-                  <Progress
-                    className="mt-3"
-                    indicatorClassName={
-                      item.status === "Breach"
-                        ? "bg-rose-400"
-                        : item.status === "Watch"
-                          ? "bg-amber-400"
-                          : "bg-emerald-400"
-                    }
-                    value={(item.exposurePct / item.thresholdPct) * 100}
-                  />
                 </div>
-              ))}
-
-              {risk.correlationClusters.map((cluster) => (
-                <div key={cluster.tag} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{cluster.tag}</p>
-                    <p className="text-sm text-muted-foreground">{cluster.exposurePct}% exposure</p>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{cluster.holdings.join(", ")}</p>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current value</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {formatCurrency(category.currentValueAed, snapshot.settings.reportingCurrency)}
+                  </p>
                 </div>
-              ))}
-
-              {risk.suggestions.map((suggestion) => (
-                <div key={suggestion.label} className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{suggestion.label}</p>
-                    <Badge variant={actionVariant(suggestion.action)}>{suggestion.action}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{suggestion.rationale}</p>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">P&L</p>
+                  <Badge variant={pnlVariant(category.pnlAed)}>
+                    {formatCurrency(category.pnlAed, snapshot.settings.reportingCurrency)}
+                  </Badge>
                 </div>
-              ))}
+              </div>
             </CardContent>
           </Card>
-        </div>
+        ))}
       </div>
+
+      <Modal
+        description="This writes through the internal portfolio API and persists to Postgres when DATABASE_URL is configured."
+        onClose={() => setIsModalOpen(false)}
+        open={isModalOpen}
+        title={modalMode === "edit" ? "Edit investment" : "Add investment"}
+      >
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <FieldGroup>
+            <Field label="Ticker or code">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("ticker", event.target.value)}
+                value={formState.ticker}
+              />
+            </Field>
+            <Field label="Asset name">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("name", event.target.value)}
+                value={formState.name}
+              />
+            </Field>
+            <Field label="Asset class">
+              <select
+                className={fieldControlClassName}
+                onChange={(event) => updateField("assetClass", event.target.value)}
+                value={formState.assetClass}
+              >
+                <option value="Equity">Equity</option>
+                <option value="Bonds">Bonds</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Others">Others</option>
+              </select>
+            </Field>
+            <Field label="Sector or sleeve">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("sector", event.target.value)}
+                value={formState.sector}
+              />
+            </Field>
+            <Field label="Region">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("region", event.target.value)}
+                value={formState.region}
+              />
+            </Field>
+            <Field label="Currency">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("currency", event.target.value)}
+                value={formState.currency}
+              />
+            </Field>
+            <Field label="Allocation bucket">
+              <select
+                className={fieldControlClassName}
+                onChange={(event) =>
+                  updateField("allocationBucket", event.target.value as Holding["allocationBucket"])
+                }
+                value={formState.allocationBucket}
+              >
+                <option value="core">Core</option>
+                <option value="tactical">Tactical</option>
+                <option value="hedge">Hedge</option>
+              </select>
+            </Field>
+            <Field label="Quantity or units">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("quantity", Number(event.target.value))}
+                step="0.01"
+                type="number"
+                value={formState.quantity}
+              />
+            </Field>
+            <Field label="Invested amount (AED)">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("investedAmountAed", Number(event.target.value))}
+                type="number"
+                value={formState.investedAmountAed || ""}
+              />
+            </Field>
+            <Field label="Current value (AED)">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("currentValueAed", Number(event.target.value))}
+                type="number"
+                value={formState.currentValueAed || ""}
+              />
+            </Field>
+            <Field label="Beta">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("beta", Number(event.target.value))}
+                step="0.1"
+                type="number"
+                value={formState.beta}
+              />
+            </Field>
+            <Field label="Stop distance %">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateField("stopDistancePct", Number(event.target.value))}
+                step="0.1"
+                type="number"
+                value={formState.stopDistancePct}
+              />
+            </Field>
+          </FieldGroup>
+
+          <Field label="Themes">
+            <input
+              className={fieldControlClassName}
+              onChange={(event) => updateField("themes", event.target.value)}
+              placeholder="income, diversification, hard assets"
+              value={formState.themes}
+            />
+          </Field>
+
+          <Field label="Correlation tag">
+            <input
+              className={fieldControlClassName}
+              onChange={(event) => updateField("correlationTag", event.target.value)}
+              value={formState.correlationTag}
+            />
+          </Field>
+
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setIsModalOpen(false)} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button disabled={isPending} type="submit">
+              {isPending ? "Saving..." : modalMode === "edit" ? "Save changes" : "Add investment"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

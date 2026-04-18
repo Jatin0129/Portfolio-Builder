@@ -11,3 +11,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Jarvis sidecar (OpenJarvis upstream is cloned here, not committed)
+jarvis-sidecar/openjarvis/
+jarvis-sidecar/.venv/
+jarvis-sidecar/__pycache__/
+
+# Jarvis archives (kept local for reference, not in git)
+OpenJarvis-main.zip
+legacy-jarvis-master.zip

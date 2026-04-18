@@ -7,27 +7,31 @@ export function MetricCard({
   value,
   hint,
   icon,
+  tone,
   className,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   icon?: ReactNode;
+  tone?: "pos" | "neg" | "neutral";
   className?: string;
 }) {
+  const valueColor =
+    tone === "pos" ? "text-success" : tone === "neg" ? "text-danger" : "text-foreground";
   return (
     <div
       className={cn(
-        "rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,24,36,0.96),rgba(10,16,26,0.98))] p-5 shadow-[0_16px_46px_rgba(0,0,0,0.24)]",
+        "panel-border bg-card px-3 py-2",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
         {icon}
       </div>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
-      {hint ? <p className="mt-2 text-sm text-muted-foreground">{hint}</p> : null}
+      <p className={cn("mt-1 font-mono-tight text-2xl font-semibold tabular-nums", valueColor)}>{value}</p>
+      {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

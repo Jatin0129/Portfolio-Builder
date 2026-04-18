@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js dev server (MD Command Center)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Jarvis sidecar (OpenJarvis)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "jarvis:serve"],
+      "port": 8000
+    }
+  ]
+}

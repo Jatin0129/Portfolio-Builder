@@ -22,15 +22,16 @@ export function SegmentedFilter<TValue extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
-      {options.map((option) => (
+    <div className={cn("flex flex-wrap panel-border", className)}>
+      {options.map((option, idx) => (
         <button
           key={option.value}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 font-mono-tight text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors",
+            idx > 0 ? "border-l border-border" : "",
             value === option.value
-              ? "border-primary/40 bg-primary/10 text-foreground"
-              : "border-white/10 bg-white/5 text-muted-foreground",
+              ? "bg-accent/15 text-accent"
+              : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
           onClick={() => onChange(option.value)}
           type="button"

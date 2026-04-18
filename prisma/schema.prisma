@@ -84,6 +84,9 @@ model Holding {
   openRiskAed      Float
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([assetClass, region])
+  @@index([marketValueAed])
 }
 
 model WatchlistItem {
@@ -102,6 +105,8 @@ model WatchlistItem {
   candidateBucket      String
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  @@index([priority, candidateBucket])
 }
 
 model MacroEvent {
@@ -140,6 +145,15 @@ model GeopoliticalEvent {
 model JournalEntry {
   id                 String      @id @default(cuid())
   ticker             String
+  assetName          String?
+  assetCategory      String?
+  account            String?
+  quantity           Float?
+  investedAmountAed  Float?
+  currentValueAed    Float?
+  incomeAed          Float?
+  manager            String?
+  location           String?
   setupName          String
   setupTags          Json
   direction          TradeDirection
@@ -164,6 +178,34 @@ model JournalEntry {
   reviewNotes        String
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([ticker, openedAt])
+  @@index([status, assetCategory, openedAt])
+  @@index([closedAt])
+}
+
+model JarvisAuditLog {
+  id        String   @id @default(cuid())
+  toolName  String
+  payload   Json
+  result    Json
+  status    String   @default("success")
+  source    String   @default("jarvis")
+  createdAt DateTime @default(now())
+
+  @@index([toolName, createdAt])
+}
+
+model MorningDigest {
+  id          String   @id @default(cuid())
+  generatedAt DateTime @default(now())
+  timezone    String
+  scriptText  String
+  sections    Json
+  audioUrl    String?
+  version     Int      @default(1)
+
+  @@index([generatedAt])
 }
 
 model UserSettings {

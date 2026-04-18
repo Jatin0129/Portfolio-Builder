@@ -2,6 +2,15 @@ import { z } from "zod";
 
 export const journalEntryInputSchema = z.object({
   ticker: z.string().min(1),
+  assetName: z.string().min(1),
+  assetCategory: z.enum(["Equity", "Bonds", "Real Estate", "Others"]),
+  account: z.string().min(1).optional(),
+  quantity: z.number().positive().optional(),
+  investedAmountAed: z.number().positive().optional(),
+  currentValueAed: z.number().positive().optional(),
+  incomeAed: z.number().min(0).optional(),
+  manager: z.string().min(1).optional(),
+  location: z.string().min(1).optional(),
   setupName: z.string().min(1),
   setupTags: z.array(z.string().min(1)).min(1),
   direction: z.enum(["LONG", "SHORT"]),

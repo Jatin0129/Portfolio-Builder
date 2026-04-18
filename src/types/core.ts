@@ -11,6 +11,7 @@ export type AssetUniversePreference =
   | "energy proxy"
   | "bond proxy"
   | "crypto proxy";
+export type InvestmentAssetCategory = "Equity" | "Bonds" | "Real Estate" | "Others";
 export type AgentName =
   | "News Agent"
   | "Macro/Geopolitics Agent"

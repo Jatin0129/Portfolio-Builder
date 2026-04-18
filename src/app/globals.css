@@ -3,23 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: 220 28% 6%;
-  --foreground: 210 24% 96%;
-  --card: 220 24% 9%;
-  --card-foreground: 210 24% 96%;
-  --border: 218 18% 20%;
-  --muted: 220 20% 12%;
-  --muted-foreground: 216 15% 68%;
-  --accent: 191 84% 18%;
-  --accent-foreground: 210 24% 96%;
-  --primary: 190 82% 68%;
-  --primary-foreground: 220 28% 6%;
-  --success: 160 60% 52%;
-  --warning: 41 92% 65%;
-  --danger: 352 76% 66%;
-  --info: 193 86% 66%;
-  --font-sans: "Aptos", "IBM Plex Sans", "Segoe UI", sans-serif;
-  --font-mono: "Cascadia Code", "IBM Plex Mono", "Consolas", monospace;
+  /* Bloomberg-inspired terminal palette */
+  --background: 0 0% 4%;            /* near-black */
+  --foreground: 40 12% 92%;          /* warm off-white */
+  --card: 0 0% 7%;                   /* panel surface */
+  --card-foreground: 40 12% 92%;
+  --border: 35 6% 18%;               /* desaturated warm border */
+  --muted: 0 0% 10%;
+  --muted-foreground: 35 8% 60%;
+  --accent: 38 92% 50%;              /* Bloomberg amber */
+  --accent-foreground: 0 0% 4%;
+  --primary: 38 92% 55%;             /* same amber for headings/accents */
+  --primary-foreground: 0 0% 4%;
+  --success: 145 78% 50%;            /* terminal green */
+  --warning: 38 92% 55%;             /* amber */
+  --danger: 358 78% 58%;             /* terminal red */
+  --info: 196 80% 60%;               /* cool cyan for chrome */
+
+  --font-sans: "Inter", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "IBM Plex Mono", "Consolas", monospace;
 }
 
 * {
@@ -32,27 +34,30 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(58, 156, 173, 0.18), transparent 22%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), transparent 20%),
-    radial-gradient(circle at bottom right, rgba(247, 200, 115, 0.07), transparent 18%),
-    hsl(var(--background));
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-feature-settings: "ss01", "cv05", "tnum";
 }
 
+/* Subtle horizontal scanline texture for that terminal feel */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 96px 96px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.012) 0,
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
   pointer-events: none;
+  z-index: 1;
 }
 
 ::selection {
-  background: rgba(102, 224, 213, 0.25);
+  background: hsl(var(--accent) / 0.4);
+  color: hsl(var(--foreground));
 }
 
 @layer base {
@@ -60,12 +65,38 @@ body::before {
   h2,
   h3,
   h4 {
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
   }
 
   input,
   select,
   textarea {
     color: hsl(var(--foreground));
+  }
+
+  /* Tabular numerals everywhere by default */
+  body {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .font-mono-tight {
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum", "zero";
+  }
+
+  .panel-border {
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Blinking cursor for Jarvis live indicator */
+  .blink {
+    animation: blink 1.1s steps(2, start) infinite;
+  }
+
+  @keyframes blink {
+    to { visibility: hidden; }
   }
 }

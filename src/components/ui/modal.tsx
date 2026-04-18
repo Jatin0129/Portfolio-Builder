@@ -24,30 +24,30 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
       <button aria-label="Close modal" className="absolute inset-0" onClick={onClose} type="button" />
       <div
         className={cn(
-          "relative z-10 w-full max-w-3xl rounded-[32px] border border-white/12 bg-[linear-gradient(180deg,rgba(12,18,28,0.98),rgba(7,12,20,0.98))] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)]",
+          "relative z-10 w-full max-w-3xl panel-border bg-card",
           className,
         )}
       >
-        <div className="mb-6 flex items-start justify-between gap-4 border-b border-white/8 pb-5">
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/40 px-3 py-2">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-primary">Workflow</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
-            {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
+            <p className="font-mono-tight text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">DIALOG</p>
+            <h2 className="mt-0.5 font-mono-tight text-sm font-semibold tracking-tight text-foreground">{title}</h2>
+            {description ? <p className="mt-1 font-mono-tight text-[11px] text-muted-foreground">{description}</p> : null}
           </div>
           <button
             aria-label="Close"
-            className="rounded-full border border-white/10 bg-white/5 p-2 text-muted-foreground transition hover:border-white/20 hover:text-foreground"
+            className="border border-border bg-muted p-1 text-muted-foreground transition hover:border-accent/40 hover:text-accent"
             onClick={onClose}
             type="button"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </button>
         </div>
-        {children}
+        <div className="p-3">{children}</div>
       </div>
     </div>
   );

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     .map((symbol) => symbol.trim().toUpperCase())
     .filter(Boolean);
 
-  const trackedItems = getTrackedMarketInstruments(category, symbols, limit);
+  const trackedItems = await getTrackedMarketInstruments(category, symbols, limit);
 
   if (!trackedItems.length) {
     return NextResponse.json({

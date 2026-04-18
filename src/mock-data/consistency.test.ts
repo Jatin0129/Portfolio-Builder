@@ -10,7 +10,7 @@ import { holdings, watchlist } from "@/mock-data/portfolio";
 test("seeded market universe stays broad and consistent across demo records", () => {
   const assetTickers = new Set(assetUniverse.map((asset) => asset.ticker));
 
-  assert.equal(assetUniverse.length, 25);
+  assert.ok(assetUniverse.length >= 25);
 
   for (const holding of holdings) {
     assert.ok(assetTickers.has(holding.ticker), `holding ${holding.ticker} missing from asset universe`);

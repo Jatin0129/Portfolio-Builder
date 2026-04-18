@@ -125,6 +125,15 @@ export const seedGeopoliticalEvents = seededGeopoliticalBoard.events.map((event)
 
 export const seedJournalEntries = journalEntries.map((entry) => ({
   ticker: entry.ticker,
+  assetName: entry.assetName,
+  assetCategory: entry.assetCategory,
+  account: entry.account,
+  quantity: entry.quantity,
+  investedAmountAed: entry.investedAmountAed,
+  currentValueAed: entry.currentValueAed,
+  incomeAed: entry.incomeAed,
+  manager: entry.manager,
+  location: entry.location,
   setupName: entry.setupName,
   setupTags: toJson(entry.setupTags),
   direction: entry.direction,

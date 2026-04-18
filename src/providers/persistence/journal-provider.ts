@@ -29,6 +29,15 @@ function deriveBehaviorTags(
 function toJournalEntry(record: {
   id: string;
   ticker: string;
+  assetName: string | null;
+  assetCategory: string | null;
+  account: string | null;
+  quantity: number | null;
+  investedAmountAed: number | null;
+  currentValueAed: number | null;
+  incomeAed: number | null;
+  manager: string | null;
+  location: string | null;
   setupName: string;
   setupTags: unknown;
   direction: JournalEntry["direction"];
@@ -55,6 +64,15 @@ function toJournalEntry(record: {
   return {
     id: record.id,
     ticker: record.ticker,
+    assetName: record.assetName ?? undefined,
+    assetCategory: (record.assetCategory as JournalEntry["assetCategory"]) ?? undefined,
+    account: record.account ?? undefined,
+    quantity: record.quantity ?? undefined,
+    investedAmountAed: record.investedAmountAed ?? undefined,
+    currentValueAed: record.currentValueAed ?? undefined,
+    incomeAed: record.incomeAed ?? undefined,
+    manager: record.manager ?? undefined,
+    location: record.location ?? undefined,
     setupName: record.setupName,
     setupTags: record.setupTags as string[],
     direction: record.direction,
@@ -100,6 +118,15 @@ export const prismaJournalProvider: JournalProvider = {
     const created = await prisma.journalEntry.create({
       data: {
         ticker: entry.ticker,
+        assetName: entry.assetName,
+        assetCategory: entry.assetCategory,
+        account: entry.account,
+        quantity: entry.quantity,
+        investedAmountAed: entry.investedAmountAed,
+        currentValueAed: entry.currentValueAed,
+        incomeAed: entry.incomeAed,
+        manager: entry.manager,
+        location: entry.location,
         setupName: entry.setupName,
         setupTags: entry.setupTags,
         direction: entry.direction,
@@ -134,8 +161,11 @@ export const prismaJournalProvider: JournalProvider = {
       throw new Error("Journal entry not found");
     }
 
-    const realizedPnlPct = Number((((exit.exitPrice - existing.entryPrice) / existing.entryPrice) * 100).toFixed(1));
-    const realizedPnlAed = Number(((existing.plannedRiskAed * realizedPnlPct) / Math.max(existing.plannedRiskPct, 0.1)).toFixed(0));
+    const quantity = existing.quantity ?? 1;
+    const investedAmountAed = existing.investedAmountAed ?? existing.entryPrice * quantity;
+    const exitValueAed = exit.exitPrice * quantity;
+    const realizedPnlAed = Number((exitValueAed - investedAmountAed).toFixed(0));
+    const realizedPnlPct = Number(((realizedPnlAed / Math.max(investedAmountAed, 1)) * 100).toFixed(1));
     const outcomeR = Number((realizedPnlPct / Math.max(existing.plannedRiskPct, 0.1)).toFixed(1));
 
     const updated = await prisma.journalEntry.update({
@@ -146,6 +176,7 @@ export const prismaJournalProvider: JournalProvider = {
         exitPrice: exit.exitPrice,
         exitReasons: exit.exitReasons,
         rulesFollowed: exit.rulesFollowed,
+        currentValueAed: exitValueAed,
         realizedPnlPct,
         realizedPnlAed,
         outcomeR,

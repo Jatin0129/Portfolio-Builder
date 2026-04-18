@@ -23,16 +23,16 @@ const config: Config = {
         info: "hsl(var(--info))"
       },
       borderRadius: {
-        lg: "1rem",
-        xl: "1.5rem",
-        "2xl": "2rem"
+        // Bloomberg = sharp. Keep small radii for chrome only.
+        sm: "2px",
+        DEFAULT: "3px",
+        md: "4px",
+        lg: "6px",
+        xl: "8px",
+        "2xl": "10px",
       },
       boxShadow: {
-        glow: "0 24px 80px rgba(0, 0, 0, 0.35)"
-      },
-      backgroundImage: {
-        "grid-fade":
-          "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)"
+        none: "none",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

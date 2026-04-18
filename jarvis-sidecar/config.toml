@@ -1,0 +1,68 @@
+# MD Command Center — OpenJarvis configuration
+# Copy to ~/.openjarvis/config.toml and customize as needed.
+
+[engine]
+# Default to local Ollama. Switch to "cloud" and set API key envs to use Anthropic/OpenAI.
+default = "ollama"
+
+[engine.ollama]
+host = "http://localhost:11434"
+
+# [engine.cloud]
+# provider = "anthropic"   # or "openai" / "google"
+# # ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY env var must be set
+
+[intelligence]
+# Pick a small-fast or large-quality model. qwen3:8b is a good MD-laptop default.
+default_model = "qwen3:8b"
+# default_model = "qwen3:4b"     # faster
+# default_model = "qwen3:32b"    # higher quality, needs 32GB+ RAM
+
+[agent]
+# Orchestrator handles tool-calling — required for the portfolio tools to fire.
+default_agent = "orchestrator"
+turn_limit = 6
+context_from_memory = true
+
+# Tools the agent is allowed to call. The portfolio_* tools live in skills/portfolio_tools.py.
+[tools]
+enabled = [
+    "portfolio_overview",
+    "market_pulse",
+    "log_journal_entry",
+    "close_position",
+    "run_risk_check",
+    "recall_journal",
+    "calculator",
+    "think",
+    "retrieval",
+]
+
+[tools.storage]
+backend = "sqlite"   # SQLite/FTS5 — zero-dependency default
+
+# ─── Persona ───────────────────────────────────────────────
+[prompts]
+default_persona = "mdb"
+
+# ─── Morning Digest ────────────────────────────────────────
+[digest]
+enabled = true
+schedule = "0 7 * * *"
+timezone = "Asia/Dubai"
+persona = "mdb"
+honorific = "sir"
+sections = ["portfolio", "market_pulse", "calendar", "world"]
+# tts_backend = "cartesia"        # uncomment + add CARTESIA_API_KEY when you want spoken delivery
+# voice_id = "c8f7835e-28a3-4f0c-80d7-c1302ac62aae"
+# voice_speed = 1.2
+
+[digest.portfolio]
+# Pulls from the Next.js app via the custom connector
+endpoint = "${NEXT_APP_URL}/api/portfolio/snapshot"
+
+[digest.calendar]
+sources = []   # add gcalendar etc. once OAuth is set up
+
+[digest.world]
+sources = []

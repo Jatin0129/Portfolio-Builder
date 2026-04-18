@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title">
+  <title>MDB Journal</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#103746"/>
+      <stop offset="100%" stop-color="#070b12"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="36" fill="url(#bg)"/>
+  <rect x="18" y="18" width="156" height="156" rx="30" fill="none" stroke="#5fd7df" stroke-opacity=".22" stroke-width="4"/>
+  <text x="96" y="108" fill="#e8f4f7" font-size="54" font-family="Aptos, IBM Plex Sans, Segoe UI, sans-serif" font-weight="700" text-anchor="middle">MDB</text>
+</svg>

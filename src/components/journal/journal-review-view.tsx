@@ -1,314 +1,167 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardList, Plus, Sparkles, Target } from "lucide-react";
 
-import { DisciplineChart } from "@/components/charts/discipline-chart";
+import { useRouter } from "next/navigation";
+import { BookOpenCheck, CirclePlus, Flag, Wallet } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartPanel } from "@/components/ui/chart-panel";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Field, FieldGroup, fieldControlClassName } from "@/components/ui/field";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Modal } from "@/components/ui/modal";
-import { PanelList } from "@/components/ui/panel-list";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SegmentedFilter } from "@/components/ui/segmented-filter";
-import type { JournalEntry, JournalEntryInput, JournalExitInput, ReviewSnapshot } from "@/types";
+import { formatCurrency } from "@/lib/utils";
+import type { InvestmentAssetCategory, JournalEntry, MdbJournalSnapshot } from "@/types";
 
-function statusVariant(status: JournalEntry["status"]) {
-  if (status === "OPEN") return "warning";
-  if (status === "CLOSED") return "success";
-  return "neutral";
+type EntryFormState = {
+  ticker: string;
+  assetName: string;
+  assetCategory: InvestmentAssetCategory;
+  investedAmountAed: number;
+  currentValueAed: number;
+  quantity: number;
+  account: string;
+  location: string;
+  openedAt: string;
+  entryReasons: string;
+  setupTags: string;
+  reviewNotes: string;
+  plannedRiskPct: number;
+  rulesFollowed: boolean;
+};
+
+type ExitFormState = {
+  closedAt: string;
+  exitValueAed: number;
+  exitReasons: string;
+  reviewNotes: string;
+  rulesFollowed: boolean;
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-AE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
-function BehaviorPanel({
-  title,
-  count,
-  variant,
-  items,
-}: {
-  title: string;
-  count: number;
-  variant: "warning" | "info" | "danger" | "neutral";
-  items: Array<{ id?: string; label: string }>;
-}) {
-  return (
-    <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-medium">{title}</p>
-        <Badge variant={variant}>{count}</Badge>
-      </div>
-      <PanelList
-        className="mt-3"
-        emptyState="No issues flagged in the current review window."
-        items={items}
-        renderItem={(item, index) => (
-          <p key={item.id ?? `${title}-${index}`} className="text-sm text-muted-foreground">
-            {item.label}
-          </p>
-        )}
-      />
-    </div>
-  );
+function splitValues(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
-function JournalEntryForm({
-  entryForm,
-  setEntryForm,
-  onCancel,
-  onSubmit,
-  isPending,
-}: {
-  entryForm: JournalEntryInput;
-  setEntryForm: Dispatch<SetStateAction<JournalEntryInput>>;
-  onCancel: () => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  isPending: boolean;
-}) {
-  return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <FieldGroup>
-        <Field label="Ticker">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setEntryForm((current) => ({ ...current, ticker: event.target.value }))}
-            value={entryForm.ticker}
-          />
-        </Field>
-        <Field label="Setup">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setEntryForm((current) => ({ ...current, setupName: event.target.value }))}
-            value={entryForm.setupName}
-          />
-        </Field>
-        <Field className="md:col-span-2" label="Thesis">
-          <textarea
-            className={`${fieldControlClassName} min-h-[110px]`}
-            onChange={(event) => setEntryForm((current) => ({ ...current, thesis: event.target.value }))}
-            value={entryForm.thesis}
-          />
-        </Field>
-        <Field label="Entry price">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setEntryForm((current) => ({ ...current, entryPrice: Number(event.target.value) }))}
-            type="number"
-            value={entryForm.entryPrice}
-          />
-        </Field>
-        <Field label="Planned risk %">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setEntryForm((current) => ({ ...current, plannedRiskPct: Number(event.target.value) }))}
-            step="0.1"
-            type="number"
-            value={entryForm.plannedRiskPct}
-          />
-        </Field>
-        <Field className="md:col-span-2" label="Setup tags">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) =>
-              setEntryForm((current) => ({
-                ...current,
-                setupTags: event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
-              }))
-            }
-            value={entryForm.setupTags.join(", ")}
-          />
-        </Field>
-        <Field className="md:col-span-2" label="Entry reasons">
-          <textarea
-            className={`${fieldControlClassName} min-h-[100px]`}
-            onChange={(event) =>
-              setEntryForm((current) => ({
-                ...current,
-                entryReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
-              }))
-            }
-            value={entryForm.entryReasons.join("\n")}
-          />
-        </Field>
-      </FieldGroup>
-      <div className="flex items-center justify-end gap-3">
-        <Button onClick={onCancel} type="button" variant="ghost">
-          Cancel
-        </Button>
-        <Button disabled={isPending} type="submit">
-          {isPending ? "Saving..." : "Create entry"}
-        </Button>
-      </div>
-    </form>
-  );
+function defaultEntryForm(maxRiskPerTradePct: number): EntryFormState {
+  return {
+    ticker: "",
+    assetName: "",
+    assetCategory: "Equity",
+    investedAmountAed: 0,
+    currentValueAed: 0,
+    quantity: 1,
+    account: "MDB Main Book",
+    location: "",
+    openedAt: new Date().toISOString().slice(0, 10),
+    entryReasons: "",
+    setupTags: "",
+    reviewNotes: "",
+    plannedRiskPct: maxRiskPerTradePct,
+    rulesFollowed: true,
+  };
 }
 
-function JournalExitForm({
-  exitForm,
-  setExitForm,
-  onCancel,
-  onSubmit,
-  isPending,
-}: {
-  exitForm: Omit<JournalExitInput, "id">;
-  setExitForm: Dispatch<SetStateAction<Omit<JournalExitInput, "id">>>;
-  onCancel: () => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  isPending: boolean;
-}) {
-  return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <FieldGroup>
-        <Field label="Exit price">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setExitForm((current) => ({ ...current, exitPrice: Number(event.target.value) }))}
-            type="number"
-            value={exitForm.exitPrice}
-          />
-        </Field>
-        <Field label="Closed at">
-          <input
-            className={fieldControlClassName}
-            onChange={(event) => setExitForm((current) => ({ ...current, closedAt: event.target.value }))}
-            type="datetime-local"
-            value={exitForm.closedAt.slice(0, 16)}
-          />
-        </Field>
-        <Field className="md:col-span-2" label="Exit reasons">
-          <textarea
-            className={`${fieldControlClassName} min-h-[100px]`}
-            onChange={(event) =>
-              setExitForm((current) => ({
-                ...current,
-                exitReasons: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
-              }))
-            }
-            value={exitForm.exitReasons.join("\n")}
-          />
-        </Field>
-        <Field className="md:col-span-2" label="Review notes">
-          <textarea
-            className={`${fieldControlClassName} min-h-[110px]`}
-            onChange={(event) => setExitForm((current) => ({ ...current, reviewNotes: event.target.value }))}
-            value={exitForm.reviewNotes}
-          />
-        </Field>
-      </FieldGroup>
-      <div className="flex items-center justify-end gap-3">
-        <Button onClick={onCancel} type="button" variant="ghost">
-          Cancel
-        </Button>
-        <Button disabled={isPending} type="submit">
-          {isPending ? "Closing..." : "Close trade"}
-        </Button>
-      </div>
-    </form>
-  );
+function defaultExitForm(): ExitFormState {
+  return {
+    closedAt: new Date().toISOString().slice(0, 10),
+    exitValueAed: 0,
+    exitReasons: "",
+    reviewNotes: "",
+    rulesFollowed: true,
+  };
 }
 
-export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
+export function JournalReviewView({ snapshot }: { snapshot: MdbJournalSnapshot }) {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<"ALL" | JournalEntry["status"]>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<
+    "ALL" | "Equity" | "Bonds" | "Real Estate" | "Others"
+  >("ALL");
+  const [entryForm, setEntryForm] = useState<EntryFormState>(
+    defaultEntryForm(snapshot.settings.maxRiskPerTradePct),
+  );
+  const [exitForm, setExitForm] = useState<ExitFormState>(defaultExitForm());
+  const [activeExitEntry, setActiveExitEntry] = useState<JournalEntry | null>(null);
   const [showEntryModal, setShowEntryModal] = useState(false);
-  const [selectedExit, setSelectedExit] = useState<JournalEntry | null>(null);
+  const [feedback, setFeedback] = useState<"idle" | "saved" | "error">("idle");
   const [isPending, startTransition] = useTransition();
-  const [entryForm, setEntryForm] = useState<JournalEntryInput>({
-    ticker: "NVDA",
-    setupName: "AI leadership continuation",
-    setupTags: ["ai", "breakout"],
-    direction: "LONG",
-    openedAt: new Date().toISOString(),
-    entryPrice: 968,
-    thesis: "Leadership remains intact while macro stays selective rather than outright bearish.",
-    entryReasons: ["Relative strength remains elite", "Catalyst stack is active"],
-    rulesFollowed: true,
-    plannedRiskPct: 1,
-    plannedRiskAed: 12500,
-    disciplineScore: 8,
-    holdingHorizon: "swing",
-    reviewNotes: "Need confirmation through the trigger, not anticipation.",
-  });
-  const [exitForm, setExitForm] = useState<Omit<JournalExitInput, "id">>({
-    closedAt: new Date().toISOString(),
-    exitPrice: 0,
-    exitReasons: ["Target reached"],
-    rulesFollowed: true,
-    reviewNotes: "Managed according to plan.",
-  });
 
-  const filteredEntries = useMemo(() => {
-    if (statusFilter === "ALL") return snapshot.entries;
-    return snapshot.entries.filter((entry) => entry.status === statusFilter);
-  }, [snapshot.entries, statusFilter]);
+  const filteredEntries = useMemo(
+    () =>
+      snapshot.entries.filter((entry) => {
+        const matchesStatus = statusFilter === "ALL" || entry.status === statusFilter;
+        const matchesCategory =
+          categoryFilter === "ALL" || (entry.assetCategory ?? "Others") === categoryFilter;
+        return matchesStatus && matchesCategory;
+      }),
+    [categoryFilter, snapshot.entries, statusFilter],
+  );
 
-  const openEntries = snapshot.entries.filter((entry) => entry.status === "OPEN");
-
-  const tradeLogColumns: DataTableColumn<JournalEntry>[] = [
+  const columns: DataTableColumn<JournalEntry>[] = [
     {
-      key: "trade",
-      header: "Trade",
+      key: "asset",
+      header: "Asset",
       render: (entry) => (
         <div>
-          <div className="flex items-center gap-2">
-            <p className="font-medium">{entry.ticker}</p>
-            <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{entry.openedAt.slice(0, 10)}</p>
+          <p className="font-medium text-foreground">{entry.assetName ?? entry.ticker}</p>
+          <p className="text-xs text-muted-foreground">{entry.ticker}</p>
         </div>
       ),
     },
     {
-      key: "setup",
-      header: "Setup",
+      key: "category",
+      header: "Category",
+      render: (entry) => <Badge variant="info">{entry.assetCategory ?? "Others"}</Badge>,
+    },
+    {
+      key: "date",
+      header: "Opened",
+      render: (entry) => formatDate(entry.openedAt),
+    },
+    {
+      key: "invested",
+      header: "Invested",
+      render: (entry) =>
+        formatCurrency(
+          entry.investedAmountAed ?? entry.entryPrice * (entry.quantity ?? 1),
+          snapshot.settings.reportingCurrency,
+        ),
+    },
+    {
+      key: "status",
+      header: "Status",
       render: (entry) => (
-        <div>
-          <p className="font-medium">{entry.setupName}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {entry.setupTags.map((tag) => (
+        <Badge variant={entry.status === "OPEN" ? "success" : "neutral"}>{entry.status}</Badge>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (entry) => (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">{entry.thesis}</p>
+          <div className="flex flex-wrap gap-2">
+            {entry.setupTags.slice(0, 2).map((tag) => (
               <Badge key={tag} variant="neutral">
                 {tag}
               </Badge>
             ))}
           </div>
-        </div>
-      ),
-    },
-    {
-      key: "risk",
-      header: "Risk",
-      render: (entry) => (
-        <p className="text-muted-foreground">
-          {entry.plannedRiskPct}% / AED {entry.plannedRiskAed.toLocaleString("en-AE")}
-        </p>
-      ),
-    },
-    {
-      key: "outcome",
-      header: "Outcome",
-      render: (entry) => (
-        <div>
-          <p className="font-medium">{entry.outcomeR !== undefined ? `${entry.outcomeR}R` : "Open"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {entry.realizedPnlPct !== undefined ? `${entry.realizedPnlPct}%` : "Awaiting exit"}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "behavior",
-      header: "Behavior",
-      render: (entry) => (
-        <div className="flex flex-wrap gap-2">
-          {entry.behaviorTags.map((tag) => (
-            <Badge key={tag} variant={tag === "followed-plan" ? "success" : "warning"}>
-              {tag}
-            </Badge>
-          ))}
         </div>
       ),
     },
@@ -319,263 +172,470 @@ export function JournalReviewView({ snapshot }: { snapshot: ReviewSnapshot }) {
         entry.status === "OPEN" ? (
           <Button
             onClick={() => {
-              setSelectedExit(entry);
-              setExitForm((current) => ({
-                ...current,
-                exitPrice: entry.entryPrice,
-                closedAt: new Date().toISOString(),
-              }));
+              setActiveExitEntry(entry);
+              setExitForm({
+                ...defaultExitForm(),
+                exitValueAed:
+                  entry.currentValueAed ?? entry.investedAmountAed ?? entry.entryPrice * (entry.quantity ?? 1),
+              });
             }}
             type="button"
             variant="secondary"
           >
-            Close trade
+            Close
           </Button>
         ) : (
-          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reviewed</span>
+          <Badge variant="neutral">Closed</Badge>
         ),
     },
   ];
+
+  function updateEntryField<TKey extends keyof EntryFormState>(key: TKey, value: EntryFormState[TKey]) {
+    setEntryForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateExitField<TKey extends keyof ExitFormState>(key: TKey, value: ExitFormState[TKey]) {
+    setExitForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetEntryForm() {
+    setEntryForm(defaultEntryForm(snapshot.settings.maxRiskPerTradePct));
+  }
 
   async function handleCreateEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     startTransition(async () => {
-      await fetch("/api/journal/entries", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(entryForm),
-      });
-      setShowEntryModal(false);
-      router.refresh();
+      try {
+        const quantity = Math.max(entryForm.quantity || 1, 1);
+        const investedAmountAed = entryForm.investedAmountAed;
+        const currentValueAed = entryForm.currentValueAed || investedAmountAed;
+        const entryReasons = splitValues(entryForm.entryReasons || "Portfolio allocation");
+        const setupTags = splitValues(entryForm.setupTags || entryForm.assetCategory);
+        const reviewNotes = entryForm.reviewNotes.trim() || "Recorded through the MDB journal flow.";
+        const payload = {
+          ticker: entryForm.ticker.trim().toUpperCase(),
+          assetName: entryForm.assetName.trim(),
+          assetCategory: entryForm.assetCategory,
+          account: entryForm.account.trim() || undefined,
+          quantity,
+          investedAmountAed,
+          currentValueAed,
+          location: entryForm.location.trim() || undefined,
+          setupName: `${entryForm.assetCategory} allocation`,
+          setupTags,
+          direction: "LONG" as const,
+          openedAt: new Date(entryForm.openedAt).toISOString(),
+          entryPrice: investedAmountAed / quantity,
+          thesis: entryReasons[0] || reviewNotes,
+          entryReasons,
+          rulesFollowed: entryForm.rulesFollowed,
+          plannedRiskPct: entryForm.plannedRiskPct,
+          plannedRiskAed: Number(((investedAmountAed * entryForm.plannedRiskPct) / 100).toFixed(0)),
+          disciplineScore: entryForm.rulesFollowed ? 8 : 6,
+          holdingHorizon: snapshot.settings.preferredHoldingHorizon,
+          reviewNotes,
+        };
+
+        const response = await fetch("/api/journal/entries", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to save entry");
+        }
+
+        setFeedback("saved");
+        setShowEntryModal(false);
+        resetEntryForm();
+        router.refresh();
+      } catch {
+        setFeedback("error");
+      }
     });
   }
 
-  async function handleCloseTrade(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCloseEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedExit) return;
+    if (!activeExitEntry) return;
 
     startTransition(async () => {
-      await fetch(`/api/journal/entries/${selectedExit.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(exitForm),
-      });
-      setSelectedExit(null);
-      router.refresh();
+      try {
+        const quantity = activeExitEntry.quantity ?? 1;
+        const exitReasons = splitValues(exitForm.exitReasons || "Portfolio exit");
+        const response = await fetch(`/api/journal/entries/${activeExitEntry.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            closedAt: new Date(exitForm.closedAt).toISOString(),
+            exitPrice: exitForm.exitValueAed / quantity,
+            exitReasons,
+            rulesFollowed: exitForm.rulesFollowed,
+            reviewNotes: exitForm.reviewNotes.trim() || "Position closed through the MDB journal flow.",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to close entry");
+        }
+
+        setFeedback("saved");
+        setActiveExitEntry(null);
+        setExitForm(defaultExitForm());
+        router.refresh();
+      } catch {
+        setFeedback("error");
+      }
     });
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SectionHeading
-        eyebrow="Journal & Review"
-        title="Execution quality and behavioral discipline"
-        description="Trade logging, review analytics, and behavior diagnostics now share one operating surface so decisions and mistakes stay visible."
+        eyebrow="Journal"
+        title="Record and review every investment"
+        description="This is the simplest operating layer for MDB: log the entry, categorize it correctly, and keep a clean record of why capital was deployed or exited."
         action={
-          <div className="flex items-center gap-3">
-            <Badge variant="info">{snapshot.analytics.winRate}% win rate</Badge>
-            <Button className="gap-2" onClick={() => setShowEntryModal(true)} type="button">
-              <Plus className="h-4 w-4" />
-              Log entry
-            </Button>
-          </div>
+          <Button onClick={() => setShowEntryModal(true)} type="button">
+            <CirclePlus className="mr-2 h-4 w-4" />
+            Add entry
+          </Button>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          hint="Closed trade quality"
-          icon={<Target className="h-4 w-4 text-primary" />}
+          hint="Closed entries only"
+          icon={<BookOpenCheck className="h-4 w-4 text-primary" />}
           label="Win rate"
           value={`${snapshot.analytics.winRate}%`}
         />
         <MetricCard
-          hint="Winning trades"
-          icon={<Sparkles className="h-4 w-4 text-cyan-300" />}
-          label="Avg gain"
+          hint="Average closed gain"
+          icon={<Wallet className="h-4 w-4 text-emerald-300" />}
+          label="Average gain"
           value={`${snapshot.analytics.averageGain}%`}
         />
         <MetricCard
-          hint="Losing trades"
-          icon={<AlertTriangle className="h-4 w-4 text-rose-300" />}
-          label="Avg loss"
+          hint="Average closed loss"
+          icon={<Flag className="h-4 w-4 text-rose-300" />}
+          label="Average loss"
           value={`${snapshot.analytics.averageLoss}%`}
         />
         <MetricCard
-          hint="Expected edge per trade"
-          icon={<ClipboardList className="h-4 w-4 text-amber-300" />}
+          hint={feedback === "saved" ? "Latest change saved" : "Expectancy in R terms"}
+          icon={<BookOpenCheck className="h-4 w-4 text-cyan-300" />}
           label="Expectancy"
-          value={`${snapshot.analytics.expectancy}R`}
-        />
-        <MetricCard
-          hint="Needs active management"
-          icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
-          label="Open trades"
-          value={openEntries.length}
+          value={snapshot.analytics.expectancy}
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Journal analytics</CardTitle>
-              <CardDescription>Performance quality by outcome, discipline, and repeatable setup behavior.</CardDescription>
+              <CardTitle>Journal log</CardTitle>
+              <CardDescription>All recorded entries and exits across Equity, Bonds, Real Estate, and Others.</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <SegmentedFilter
+                onChange={(value) => setStatusFilter(value as typeof statusFilter)}
+                options={[
+                  { label: "ALL", value: "ALL" },
+                  { label: "OPEN", value: "OPEN" },
+                  { label: "CLOSED", value: "CLOSED" },
+                ]}
+                value={statusFilter}
+              />
+              <SegmentedFilter
+                onChange={(value) => setCategoryFilter(value as typeof categoryFilter)}
+                options={[
+                  { label: "ALL", value: "ALL" },
+                  { label: "EQUITY", value: "Equity" },
+                  { label: "BONDS", value: "Bonds" },
+                  { label: "REAL ESTATE", value: "Real Estate" },
+                  { label: "OTHERS", value: "Others" },
+                ]}
+                value={categoryFilter}
+              />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Best setup</p>
-                <p className="mt-2 text-xl font-semibold">{snapshot.analytics.bestSetupType}</p>
-              </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Worst setup</p>
-                <p className="mt-2 text-xl font-semibold">{snapshot.analytics.worstSetupType}</p>
-              </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Average R</p>
-                <p className="mt-2 text-xl font-semibold">{snapshot.analytics.averageR}</p>
-              </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-                <p className="text-sm text-muted-foreground">Discipline average</p>
-                <p className="mt-2 text-xl font-semibold">{snapshot.analytics.disciplineAverage}/10</p>
-              </div>
-            </div>
-            <div className="mt-5">
-              <ChartPanel
-                description="Average discipline score by month across closed trades."
-                title="Discipline curve"
-              >
-                <DisciplineChart data={snapshot.analytics.curve} />
-              </ChartPanel>
-            </div>
+            <DataTable
+              columns={columns}
+              emptyState="No journal entries match the current filter."
+              getRowKey={(entry) => entry.id}
+              rows={filteredEntries}
+            />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Behavioral review panel</CardTitle>
-              <CardDescription>Flags where discipline drifted away from the operating profile.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <BehaviorPanel
-              count={snapshot.behavior.oversizedTrades.length}
-              items={snapshot.behavior.oversizedTrades.slice(0, 3).map((item) => ({
-                id: item.id,
-                label: `${item.ticker}: ${item.detail}`,
-              }))}
-              title="Oversized trades"
-              variant="warning"
-            />
-            <BehaviorPanel
-              count={snapshot.behavior.earlyExits.length}
-              items={snapshot.behavior.earlyExits.slice(0, 3).map((item) => ({
-                id: item.id,
-                label: `${item.ticker}: ${item.detail}`,
-              }))}
-              title="Early exits"
-              variant="info"
-            />
-            <BehaviorPanel
-              count={snapshot.behavior.missedStops.length}
-              items={snapshot.behavior.missedStops.slice(0, 3).map((item) => ({
-                id: item.id,
-                label: `${item.ticker}: ${item.detail}`,
-              }))}
-              title="Missed stops"
-              variant="danger"
-            />
-            <BehaviorPanel
-              count={snapshot.behavior.overtradingPatterns.length}
-              items={snapshot.behavior.overtradingPatterns.map((item) => ({
-                label: `${item.date}: ${item.note}`,
-              }))}
-              title="Overtrading patterns"
-              variant="neutral"
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Category summary</CardTitle>
+                <CardDescription>How active capital is currently distributed across the four buckets.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {snapshot.categories.map((category) => (
+                <div key={category.category} className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{category.category}</p>
+                    <Badge variant={category.weightPct >= 35 ? "warning" : "neutral"}>{category.weightPct}%</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {category.itemCount} active item{category.itemCount === 1 ? "" : "s"}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {formatCurrency(category.currentValueAed, snapshot.settings.reportingCurrency)} current value
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Behavior review</CardTitle>
+                <CardDescription>Small discipline signals that help MDB review process quality over time.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                <p className="text-sm font-medium">Oversized trades</p>
+                <p className="mt-2 text-2xl font-semibold">{snapshot.behavior.oversizedTrades.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                <p className="text-sm font-medium">Early exits</p>
+                <p className="mt-2 text-2xl font-semibold">{snapshot.behavior.earlyExits.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                <p className="text-sm font-medium">Missed stops</p>
+                <p className="mt-2 text-2xl font-semibold">{snapshot.behavior.missedStops.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
+                <p className="text-sm font-medium">Best setup</p>
+                <p className="mt-2 text-lg font-semibold">{snapshot.analytics.bestSetupType}</p>
+                <p className="mt-2 text-sm text-muted-foreground">Worst setup: {snapshot.analytics.worstSetupType}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>Trade log</CardTitle>
-            <CardDescription>Filter the journal, review setup tags, and close open positions from the same table surface.</CardDescription>
-          </div>
-          <SegmentedFilter
-            onChange={setStatusFilter}
-            options={[
-              { label: "ALL", value: "ALL" },
-              { label: "OPEN", value: "OPEN" },
-              { label: "CLOSED", value: "CLOSED" },
-            ]}
-            value={statusFilter}
-          />
-        </CardHeader>
-        <CardContent className="overflow-hidden">
-          <DataTable columns={tradeLogColumns} getRowKey={(entry) => entry.id} rows={filteredEntries} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>Open trade review</CardTitle>
-            <CardDescription>Live ideas worth monitoring against discipline rules and current risk approval.</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {snapshot.openTrades.map((trade) => (
-            <div key={trade.ticker} className="rounded-[24px] border border-white/10 bg-white/4 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">{trade.ticker}</p>
-                <Badge variant={trade.riskVerdict.decision === "APPROVE" ? "success" : "warning"}>
-                  {trade.riskVerdict.decision}
-                </Badge>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{trade.executionPlan.entryZone}</p>
-              <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                <p>Catalyst: {trade.catalyst}</p>
-                <p>Invalidation: {trade.technicalSetup.invalidation}</p>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
       <Modal
-        description="Capture a new planned trade with setup, thesis, and risk context."
+        description="Log a new position or investment so it appears in the portfolio and journal views immediately."
         onClose={() => setShowEntryModal(false)}
         open={showEntryModal}
-        title="Log trade entry"
+        title="Add journal entry"
       >
-        <JournalEntryForm
-          entryForm={entryForm}
-          isPending={isPending}
-          onCancel={() => setShowEntryModal(false)}
-          onSubmit={handleCreateEntry}
-          setEntryForm={setEntryForm}
-        />
+        <form className="space-y-5" onSubmit={handleCreateEntry}>
+          <FieldGroup>
+            <Field label="Asset code">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("ticker", event.target.value)}
+                placeholder="MSFT or DXB-RE1"
+                value={entryForm.ticker}
+              />
+            </Field>
+            <Field label="Asset name">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("assetName", event.target.value)}
+                placeholder="Microsoft or Dubai Hills Apartment"
+                value={entryForm.assetName}
+              />
+            </Field>
+            <Field label="Category">
+              <select
+                className={fieldControlClassName}
+                onChange={(event) =>
+                  updateEntryField("assetCategory", event.target.value as InvestmentAssetCategory)
+                }
+                value={entryForm.assetCategory}
+              >
+                <option value="Equity">Equity</option>
+                <option value="Bonds">Bonds</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Others">Others</option>
+              </select>
+            </Field>
+            <Field label="Opened on">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("openedAt", event.target.value)}
+                type="date"
+                value={entryForm.openedAt}
+              />
+            </Field>
+            <Field label="Invested amount (AED)">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("investedAmountAed", Number(event.target.value))}
+                type="number"
+                value={entryForm.investedAmountAed || ""}
+              />
+            </Field>
+            <Field label="Current value (AED)">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("currentValueAed", Number(event.target.value))}
+                type="number"
+                value={entryForm.currentValueAed || ""}
+              />
+            </Field>
+            <Field label="Quantity or units">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("quantity", Number(event.target.value))}
+                step="0.01"
+                type="number"
+                value={entryForm.quantity}
+              />
+            </Field>
+            <Field label="Account or sleeve">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("account", event.target.value)}
+                value={entryForm.account}
+              />
+            </Field>
+            <Field label="Location or note">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("location", event.target.value)}
+                placeholder="Useful for real estate or private assets"
+                value={entryForm.location}
+              />
+            </Field>
+            <Field label="Planned risk %">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateEntryField("plannedRiskPct", Number(event.target.value))}
+                step="0.1"
+                type="number"
+                value={entryForm.plannedRiskPct}
+              />
+            </Field>
+          </FieldGroup>
+
+          <Field label="Reasons for entry">
+            <textarea
+              className={fieldControlClassName}
+              onChange={(event) => updateEntryField("entryReasons", event.target.value)}
+              placeholder="Comma-separated reasons"
+              rows={3}
+              value={entryForm.entryReasons}
+            />
+          </Field>
+
+          <Field label="Tags">
+            <input
+              className={fieldControlClassName}
+              onChange={(event) => updateEntryField("setupTags", event.target.value)}
+              placeholder="income, diversification, long-term"
+              value={entryForm.setupTags}
+            />
+          </Field>
+
+          <Field label="Review notes">
+            <textarea
+              className={fieldControlClassName}
+              onChange={(event) => updateEntryField("reviewNotes", event.target.value)}
+              rows={3}
+              value={entryForm.reviewNotes}
+            />
+          </Field>
+
+          <label className="flex items-center gap-3 text-sm text-muted-foreground">
+            <input
+              checked={entryForm.rulesFollowed}
+              onChange={(event) => updateEntryField("rulesFollowed", event.target.checked)}
+              type="checkbox"
+            />
+            Entry followed the intended process
+          </label>
+
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setShowEntryModal(false)} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button disabled={isPending} type="submit">
+              {isPending ? "Saving..." : "Save entry"}
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       <Modal
-        description="Capture the exit rationale and final review notes for the selected open trade."
-        onClose={() => setSelectedExit(null)}
-        open={Boolean(selectedExit)}
-        title={selectedExit ? `Close ${selectedExit.ticker}` : "Close trade"}
+        description="Use this when an open investment is fully exited and should move into the closed history."
+        onClose={() => setActiveExitEntry(null)}
+        open={Boolean(activeExitEntry)}
+        title={`Close ${activeExitEntry?.assetName ?? activeExitEntry?.ticker ?? "entry"}`}
       >
-        <JournalExitForm
-          exitForm={exitForm}
-          isPending={isPending}
-          onCancel={() => setSelectedExit(null)}
-          onSubmit={handleCloseTrade}
-          setExitForm={setExitForm}
-        />
+        <form className="space-y-5" onSubmit={handleCloseEntry}>
+          <FieldGroup>
+            <Field label="Exit date">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateExitField("closedAt", event.target.value)}
+                type="date"
+                value={exitForm.closedAt}
+              />
+            </Field>
+            <Field label="Exit value (AED)">
+              <input
+                className={fieldControlClassName}
+                onChange={(event) => updateExitField("exitValueAed", Number(event.target.value))}
+                type="number"
+                value={exitForm.exitValueAed || ""}
+              />
+            </Field>
+          </FieldGroup>
+
+          <Field label="Reasons for exit">
+            <textarea
+              className={fieldControlClassName}
+              onChange={(event) => updateExitField("exitReasons", event.target.value)}
+              placeholder="Comma-separated reasons"
+              rows={3}
+              value={exitForm.exitReasons}
+            />
+          </Field>
+
+          <Field label="Review notes">
+            <textarea
+              className={fieldControlClassName}
+              onChange={(event) => updateExitField("reviewNotes", event.target.value)}
+              rows={3}
+              value={exitForm.reviewNotes}
+            />
+          </Field>
+
+          <label className="flex items-center gap-3 text-sm text-muted-foreground">
+            <input
+              checked={exitForm.rulesFollowed}
+              onChange={(event) => updateExitField("rulesFollowed", event.target.checked)}
+              type="checkbox"
+            />
+            Exit followed the original plan
+          </label>
+
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setActiveExitEntry(null)} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button disabled={isPending} type="submit">
+              {isPending ? "Closing..." : "Close entry"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

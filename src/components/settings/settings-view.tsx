@@ -53,10 +53,10 @@ function AssetUniversePicker({
           <button
             key={option}
             className={cn(
-              "rounded-full border px-4 py-2 text-sm transition",
+              "rounded-sm border px-2 py-1 font-mono-tight text-[11px] uppercase tracking-[0.14em] transition",
               isSelected
-                ? "border-primary/40 bg-primary/10 text-foreground"
-                : "border-white/10 bg-white/5 text-muted-foreground",
+                ? "border-accent/50 bg-accent/15 text-accent"
+                : "border-border bg-muted text-muted-foreground hover:border-accent/30 hover:text-foreground",
             )}
             onClick={() => onToggle(option)}
             type="button"
@@ -230,8 +230,8 @@ export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
     <div className="space-y-8">
       <SectionHeading
         eyebrow="Settings"
-        title="CycleOS operating profile"
-        description="Define capital, risk tolerance, reporting defaults, alert bands, and the asset universe that drives the dashboard and risk engines."
+        title="MDB operating profile"
+        description="Set the capital base, reporting defaults, and guardrails that shape how the journal and portfolio views should be interpreted."
         action={<Badge variant="info">{formState.profile}</Badge>}
       />
 
@@ -360,7 +360,7 @@ export function SettingsView({ snapshot }: { snapshot: SettingsSnapshot }) {
           <div>
             <p className="text-sm font-medium">Settings persistence</p>
             <p className="text-sm text-muted-foreground">
-              Settings are stored through the Prisma-backed settings provider when the database is available and fall back safely otherwise.
+              Settings are stored through the Prisma-backed provider when the database is available and fall back safely otherwise.
             </p>
           </div>
           <div className="flex items-center gap-3">

@@ -1,8 +1,23 @@
-import type { HoldingHorizon, JournalBehaviorTag, TradeDirection, TradeStatus } from "@/types/core";
+import type {
+  HoldingHorizon,
+  InvestmentAssetCategory,
+  JournalBehaviorTag,
+  TradeDirection,
+  TradeStatus,
+} from "@/types/core";
 
 export interface JournalEntry {
   id: string;
   ticker: string;
+  assetName?: string;
+  assetCategory?: InvestmentAssetCategory;
+  account?: string;
+  quantity?: number;
+  investedAmountAed?: number;
+  currentValueAed?: number;
+  incomeAed?: number;
+  manager?: string;
+  location?: string;
   setupName: string;
   setupTags: string[];
   direction: TradeDirection;
@@ -63,6 +78,15 @@ export interface BehavioralReviewSnapshot {
 
 export interface JournalEntryInput {
   ticker: string;
+  assetName: string;
+  assetCategory: InvestmentAssetCategory;
+  account?: string;
+  quantity?: number;
+  investedAmountAed?: number;
+  currentValueAed?: number;
+  incomeAed?: number;
+  manager?: string;
+  location?: string;
   setupName: string;
   setupTags: string[];
   direction: TradeDirection;

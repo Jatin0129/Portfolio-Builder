@@ -11,12 +11,16 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "jarvis:serve": "cd jarvis-sidecar/openjarvis && uv run jarvis serve --port 8000",
+    "jarvis:index-journal": "cd jarvis-sidecar/openjarvis && uv run python ../scripts/index_journal.py",
+    "jarvis:digest": "cd jarvis-sidecar/openjarvis && uv run python ../scripts/morning_digest.py"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@prisma/client": "^6.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -21,7 +21,7 @@ test("segmented filter renders active and inactive options", () => {
 
   assert.match(markup, /All/);
   assert.match(markup, /Open/);
-  assert.match(markup, /border-primary\/40 bg-primary\/10 text-foreground/);
+  assert.match(markup, /bg-accent\/15 text-accent/);
 });
 
 test("data table renders headers and cells", () => {
