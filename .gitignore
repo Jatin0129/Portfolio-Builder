@@ -20,3 +20,5 @@ jarvis-sidecar/__pycache__/
 # Jarvis archives (kept local for reference, not in git)
 OpenJarvis-main.zip
 legacy-jarvis-master.zip
+
+.vercel
